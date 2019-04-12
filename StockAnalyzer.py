@@ -25,10 +25,7 @@ class News:
 
         return num_articles
 
-
-
-
-
+    # TODO make method to analyze news sentiment
 
 class KeyTerm:
 
@@ -50,3 +47,11 @@ class KeyTerm:
         internal_data = transorm_fun(self.data[data_name])
         coeff = np.polyfit(internal_data, external_data, 1)
         return coeff
+
+# TODO make class for ticker symbols: Ticker(KeyTerm)
+# TODO make class for company names symbols: Name(KeyTerm)
+# TODO make class for products: Products(KeyTerm)
+# TODO make base class for financial data: Finance
+# TODO make class for industries: Industry(KeyTerm, Finance)
+# TODO make class for companies (that handles the key terms and the financial data): Corporation(KeyTerm, Finance)
+# TODO make class to find statistical relationship between key term data and financial data for a given company: Stats
