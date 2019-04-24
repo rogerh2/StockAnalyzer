@@ -18,6 +18,7 @@ ALPHA_TS = TimeSeries(key=alpha_vantage_api_key, output_format='pandas')
 class News:
 
     def __init__(self, term):
+        self.term = term
         articles = NEWSAPI.get_everything(q=term, language='en')
         self.articles = {}
         utc_fmt = '%Y-%m-%dT%H:%M:%S'
@@ -64,13 +65,24 @@ class News:
 
         return mean_polarity, mean_subjectivity
 
+    def get_data(self, key, day):
+        if 'num_articles' in key:
+            data = self.get_num_articles(day)
+        elif 'polarity' in key:
+            data, _ = self.get_article_sentiment(day)
+        else:
+            _, data = self.get_article_sentiment(day)
+
+        return data
+
+
+
     def create_data_frame(self):
-        df_data = {'num_articles':np.array([]), 'polarity':np.array([]), 'subjectivity':np.array([])}
+        df_data = {self.term + '_num_articles':np.array([]), self.term + '_polarity':np.array([]), self.term + '_subjectivity':np.array([])}
         for day in self.days:
-            df_data['num_articles'] = np.append(df_data['num_articles'], self.get_num_articles(day))
-            mean_polarity, mean_subjectivity = self.get_article_sentiment(day)
-            df_data['polarity'] = np.append(df_data['polarity'], mean_polarity)
-            df_data['subjectivity'] = np.append(df_data['subjectivity'], mean_subjectivity)
+            for key in df_data:
+                data  = self.get_data(key, day)
+                df_data[key] = np.append(df_data[key], data)
 
         self.df = pd.DataFrame(data=df_data, index=self.days)
 
@@ -89,6 +101,9 @@ class KeyTerm:
         current_inds = self.data['GoogleTrend'].index.values
         new_inds = [str(t)[:10] for t in current_inds]
         self.data['GoogleTrend'].index = new_inds
+        is_partial = self.data['GoogleTrend']['isPartial']
+        is_full = [not x for x in is_partial]
+        self.data['GoogleTrend'] = self.data['GoogleTrend'][is_full].drop('isPartial', axis=1)
 
     def join_data_into_dataframe(self):
         self.convert_googletrend_index_to_str()
@@ -104,10 +119,24 @@ class Ticker(KeyTerm):
         stock_data, _ = ALPHA_TS.get_daily_adjusted(symbol=ticker)
         date_range = stock_data.index.values[0] + ' ' + stock_data.index.values[-1]
         super().__init__(ticker, date_range)
+        self.ticker = ticker
         self.news = News(ticker)
         self.news.create_data_frame()
         self.data['Price'] = stock_data
         self.data['News'] = self.news.df
+
+class Corporation(Ticker):
+
+    def __init__(self, name, ticker, key_words_list, key_words_news_dfs):
+
+        super(Corporation, self).__init__(ticker)
+        self.name = name
+        for word, news in zip(key_words_list, key_words_news_dfs):
+            current_term = KeyTerm(word, self.date_range)
+            current_term.data['News'] = news
+            current_term.join_data_into_dataframe()
+            self.data[word] = current_term.df
+
 
 # TODO make base class for financial data: Finance (if relevant data is available)
 # TODO make class for industries: Industry(KeyTerm, Finance) (if relevant data is available)
@@ -116,6 +145,10 @@ class Ticker(KeyTerm):
 # TODO make class to find statistical relationship between key term data and financial data for a given company: Stats
 
 if __name__ == "__main__":
-    ticker = Ticker('AAPL')
-    ticker.join_data_into_dataframe()
+    iPhone_news = News('iPhone')
+    iPhone_news.create_data_frame()
+    Mac_news = News('Mac')
+    Mac_news.create_data_frame()
+    apple = Corporation('Apple', 'AAPL', ['iPhone', 'Mac'], [iPhone_news.df, Mac_news.df])
+    apple.join_data_into_dataframe()
     news = News('Avengers')
