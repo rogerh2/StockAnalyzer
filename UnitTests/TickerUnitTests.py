@@ -8,7 +8,7 @@ class TickerTestCase(unittest.TestCase):
         self.ticker = Ticker('AAPL')
 
     def test_ticker_creates_data_frame_with_appropriate_indices(self):
-        self.ticker.join_data_into_dataframe()
+        self.ticker.join_data_into_dataframes()
         inds = self.ticker.df.index
         max_ind_len = np.max(np.array([len(self.ticker.data[key].index) for key in self.ticker.data.keys()]))
         self.assertEqual(len(inds), max_ind_len)
