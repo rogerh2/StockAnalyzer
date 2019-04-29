@@ -9,6 +9,7 @@ from transform_functions import functions
 from util import convert_utc_str_to_est_str
 from textblob import TextBlob as txb
 from time import sleep
+from matplotlib import pyplot as plt
 
 PYTREND = TrendReq(tz=300)
 news_api_key = input('What is the News API key?:')
@@ -34,6 +35,8 @@ class News:
             else:
                 self.days.append(day)
                 self.articles[day] = [article]
+
+        self.days.sort()
 
     def __getitem__(self, day):
         if day in self.articles.keys():
@@ -77,8 +80,6 @@ class News:
 
         return data
 
-
-
     def create_data_frame(self):
         df_data = {self.term + '_num_articles':np.array([]), self.term + '_polarity':np.array([]), self.term + '_subjectivity':np.array([])}
         for day in self.days:
@@ -87,6 +88,16 @@ class News:
                 df_data[key] = np.append(df_data[key], data)
 
         self.df = pd.DataFrame(data=df_data, index=self.days)
+
+    def save_news_articles(self):
+        data_for_df = {'title':[], 'publishedAt':[],'url':[], 'description':[]}
+        for date in self.articles.keys():
+            for article in self.articles[date]:
+                for key in data_for_df.keys():
+                    data_for_df[key].append(article[key])
+
+        end_date = self.days[-1]
+        pd.DataFrame(data_for_df).to_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock News Articles/' + self.term + '_from ' + end_date + '.csv')
 
 class KeyTerm:
 
@@ -190,38 +201,45 @@ class Corporation(Ticker):
 
     def save_data(self):
         self.join_data_into_dataframes()
-        self.df.to_csv('stock_data_for' + self.name + '_from ' + self.df.index.values[-1] + '.csv')
+        self.df.to_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/' + 'stock_data_for' + self.name + '_from ' + self.df.index.values[-1] + '.csv')
 
-
-
-# TODO make class to find statistical relationship between key term data and financial data for a given company: Stats
-# TODO make base class for financial data: Finance (if relevant data is available)
-# TODO make class for industries: Industry(KeyTerm, Finance) (if relevant data is available)
-# TODO make class for products: Products(KeyTerm, Finance) (if relevant data is available)
-
-if __name__ == "__main__":
+def create_and_save_data():
     key_words_lists = {
-        'NAO': {'key_terms':
-                    ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
-                'name': 'Nordic American Offshore'},
-        'SSLJ': {'key_terms':
-                     ['home improvement', 'China', 'furniture', 'renovation', 'fixer upper'],
-                'name': 'SSLJ.com Limited'},
-        'ROSE': {'key_terms':
-                     ['Delaware Basin', 'drilling', 'oil', 'natural gas', 'petroleum'],
-                'name': 'Rosehill Resources'},
-        'STNG': {'key_terms':
-                     ['tanker', 'oil', 'petroleum', 'scorpio'],
-                'name': 'Scorpio Tankers'},
-        'CUBI': {'key_terms':
-                     ['bank', 'finance', 'loans', 'mortages'],
-                'name': 'Customers Bancorp'},
-        'YETI': {'key_terms':
-                     ['cmping', 'outdoors', 'fishing', 'canoeing', 'cooler', 'tailgate'],
-                'name': 'YETI'}
-                       }
+        # 'NAO': {'key_terms':  # noticesed trends with news polarity
+        #             ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
+        #         'name': 'Nordic American Offshore'},
+        # 'ROSE': {'key_terms':  # Notice strong trends with drilling googletrends and weak trends with news polarity
+        #              ['Delaware Basin', 'drilling', 'oil', 'natural gas', 'petroleum'],
+        #          'name': 'Rosehill Resources'},
+        # 'RHE': {'key_terms':
+        #             ['AdCare Health Systems', 'healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis', 'Northwest Property Holdings', 'CP Nursing', 'ADK Georgia', 'Attalla Nursing'],
+        #         'name': 'Regional Health'},
+        # 'BRSS': {'key_terms':
+        #             ['brass', 'copper', 'precious metals', 'gold', 'Olin Brass', 'Chase Brass', 'A.J. Oster'],
+        #         'name': 'Global Brass and Copper Holdings'},
+        # 'MAN': {'key_terms':
+        #             ['staffing company', 'contractor', 'proffesional services', 'business services', 'administrative services'],
+        #         'name': 'ManpowerGroup'},
+        # 'SAH': {'key_terms':
+        #             ['car', 'automotive', 'dealerships', 'used car', 'automotive supplier', 'EchoPark Automotive'],
+        #         'name': 'Sonic Automotive'},
+        # 'AMD':{'key_terms':
+        #             ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
+        #         'name': 'Advanced Micro Devices'},
+        # 'ARA':{'key_terms':
+        #             ['dialysis', 'renal', 'nephrologist', 'kidney disease', 'kidney failure'],
+        #         'name': 'American Renal Associates Holdings'},
+        # 'ADNT':{'key_terms':
+        #             ['car', 'automotive', 'dealerships', 'used car', 'automotive seating', 'automotive supplier'],
+        #         'name': 'Adient PLC'},
+        'JMIA':{'key_terms':
+                    ['Africa', 'Amazon', 'online retail', 'e-commerce', 'Alibaba'],
+                'name': 'Jumia Technologies AG'},
+        'ASPN': {'key_terms':
+                     ['aerogel', 'insulation', 'energy', 'pyrogel', 'cryogel'],
+                 'name': 'Aspen Aerogels'}
+    }
 
-    news_list = {}
     news_objects = {}
 
     for key in key_words_lists.keys():
@@ -237,6 +255,7 @@ if __name__ == "__main__":
                 sleep(0.3)
             if len(news_objects[term].days) > 0:
                 news_objects[term].create_data_frame()
+                news_objects[term].save_news_articles()
                 current_data['news'].append(news_objects[term].df)
 
         if len(current_data['news']) > 0:
@@ -247,11 +266,8 @@ if __name__ == "__main__":
 
 
 
+# TODO make class to find statistical relationship between key term data and financial data for a given company: Stats
+# TODO make jupyter notebook for viewing data
 
-
-    # iPhone_news = News('iPhone')
-    # iPhone_news.create_data_frame()
-    # Mac_news = News('Mac')
-    # Mac_news.create_data_frame()
-    # apple = Corporation('Apple', 'AAPL', ['iPhone', 'Mac'], [iPhone_news.df, Mac_news.df])
-    # apple.save_data()
+if __name__ == "__main__":
+    create_and_save_data()

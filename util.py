@@ -1,6 +1,8 @@
 import numpy as np
+import pandas as pd
 import scipy.stats
 import pytz
+from matplotlib import pyplot as plt
 from datetime import datetime as dt
 
 def num2str(num, digits):
@@ -49,9 +51,29 @@ def convert_utc_str_to_est_str(naive_datetime_str, from_fmt, to_fmt):
     return est_date_str
 
 def convert_utc_str_to_timestamp(naive_datetime_str, from_fmt):
-    # This function converts utc dates to etc
     naive_datetime = dt.strptime(naive_datetime_str[0:19], from_fmt)
     utc = pytz.UTC
     utc_date = utc.localize(naive_datetime)
     ts = utc_date.timestamp()
     return ts
+
+def analyze_correlations(data_path):
+    ticker = pd.read_csv(data_path, index_col=0)
+    daily_change_col = ticker['4. close'] - ticker['1. open']
+    daily_change_col.name = 'daily_change'
+    ticker_full = ticker.join(daily_change_col)
+    corr_data_change = ticker_full.corr()['daily_change'][0:-1]
+    corr_data_open = ticker_full.corr()['1. open'][0:-1]
+    for data_name in corr_data_change.index.values:
+        if np.abs(corr_data_change.loc[data_name]) > 0.4:
+            ticker_full.plot(x=data_name, y='daily_change', style=['rx'])
+            plt.title(data_name + 'vs daily_change: ' + num2str(corr_data_change.loc[data_name], 2))
+        if (np.abs(corr_data_open.loc[data_name]) > 0.4) and (np.abs(corr_data_open.loc[data_name]) < 1):
+            ticker.plot(x=data_name, y='1. open', style=['rx'])
+            plt.title(data_name + 'vs open: ' + num2str(corr_data_open.loc[data_name], 2))
+
+    plt.show()
+
+
+if __name__ == "__main__":
+    analyze_correlations('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/stock_data_forAspen Aerogels_from 2019-04-29.csv')
