@@ -16,6 +16,41 @@ news_api_key = input('What is the News API key?:')
 alpha_vantage_api_key = input('What is the Alpha Vantage API key?:')
 NEWSAPI = NewsApiClient(api_key=news_api_key)
 ALPHA_TS = TimeSeries(key=alpha_vantage_api_key, output_format='pandas')
+ALL_TICKERS = {
+        'NAO': {'key_terms':  # noticesed trends with news polarity
+                    ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
+                'name': 'Nordic American Offshore'},
+        'ROSE': {'key_terms':  # Notice strong trends with drilling googletrends and weak trends with news polarity
+                     ['Delaware Basin', 'drilling', 'oil', 'natural gas', 'petroleum'],
+                 'name': 'Rosehill Resources'},
+        'RHE': {'key_terms':
+                    ['AdCare Health Systems', 'healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis', 'Northwest Property Holdings', 'CP Nursing', 'ADK Georgia', 'Attalla Nursing'],
+                'name': 'Regional Health'},
+        'MAN': {'key_terms':
+                    ['staffing company', 'contractor', 'proffesional services', 'business services', 'administrative services'],
+                'name': 'ManpowerGroup'},
+        'AMD':{'key_terms':
+                    ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
+                'name': 'Advanced Micro Devices'},
+        'ARA':{'key_terms':
+                    ['dialysis', 'renal', 'nephrologist', 'kidney disease', 'kidney failure'],
+                'name': 'American Renal Associates Holdings'},
+        'ADNT':{'key_terms':
+                    ['car', 'automotive', 'dealerships', 'used car', 'automotive seating', 'automotive supplier'],
+                'name': 'Adient PLC'},
+        'ASPN': {'key_terms':
+                    ['aerogel', 'insulation', 'energy', 'pyrogel', 'cryogel'],
+                 'name': 'Aspen Aerogels'},
+        'TLSA': {'key_terms':
+                    ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics'],
+                 'name': 'Tiziana Life Sciences'},
+        'MRNA': {'key_terms':
+                    ['Pharma', 'cancer', 'immune disease', 'inflammation', 'mRNA', 'gene therapy', 'regenerative medicine', 'immuno-oncology', 'rare diseases'],
+                 'name': 'Moderna'},
+        'IMTE': {'key_terms':
+                    ['telecommunications', 'cyber security', 'big data', 'IT services', 'media services'],
+                 'name': 'Integrated Media Technology'}
+    }
 
 class News:
 
@@ -204,46 +239,12 @@ class Corporation(Ticker):
         self.df.to_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/' + 'stock_data_for' + self.name + '_from ' + self.df.index.values[-1] + '.csv')
 
 def create_and_save_data():
-    key_words_lists = {
-        # 'NAO': {'key_terms':  # noticesed trends with news polarity
-        #             ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
-        #         'name': 'Nordic American Offshore'},
-        # 'ROSE': {'key_terms':  # Notice strong trends with drilling googletrends and weak trends with news polarity
-        #              ['Delaware Basin', 'drilling', 'oil', 'natural gas', 'petroleum'],
-        #          'name': 'Rosehill Resources'},
-        # 'RHE': {'key_terms':
-        #             ['AdCare Health Systems', 'healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis', 'Northwest Property Holdings', 'CP Nursing', 'ADK Georgia', 'Attalla Nursing'],
-        #         'name': 'Regional Health'},
-        # 'BRSS': {'key_terms':
-        #             ['brass', 'copper', 'precious metals', 'gold', 'Olin Brass', 'Chase Brass', 'A.J. Oster'],
-        #         'name': 'Global Brass and Copper Holdings'},
-        # 'MAN': {'key_terms':
-        #             ['staffing company', 'contractor', 'proffesional services', 'business services', 'administrative services'],
-        #         'name': 'ManpowerGroup'},
-        # 'SAH': {'key_terms':
-        #             ['car', 'automotive', 'dealerships', 'used car', 'automotive supplier', 'EchoPark Automotive'],
-        #         'name': 'Sonic Automotive'},
-        # 'AMD':{'key_terms':
-        #             ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
-        #         'name': 'Advanced Micro Devices'},
-        # 'ARA':{'key_terms':
-        #             ['dialysis', 'renal', 'nephrologist', 'kidney disease', 'kidney failure'],
-        #         'name': 'American Renal Associates Holdings'},
-        # 'ADNT':{'key_terms':
-        #             ['car', 'automotive', 'dealerships', 'used car', 'automotive seating', 'automotive supplier'],
-        #         'name': 'Adient PLC'},
-        'JMIA':{'key_terms':
-                    ['Africa', 'Amazon', 'online retail', 'e-commerce', 'Alibaba'],
-                'name': 'Jumia Technologies AG'},
-        'ASPN': {'key_terms':
-                     ['aerogel', 'insulation', 'energy', 'pyrogel', 'cryogel'],
-                 'name': 'Aspen Aerogels'}
-    }
+    tickers_list = ['TLSA', 'MRNA', 'IMTE', 'ARA', 'RHE']
 
     news_objects = {}
 
-    for key in key_words_lists.keys():
-        current_data = key_words_lists[key]
+    for key in tickers_list:
+        current_data = ALL_TICKERS[key]
         current_list = current_data['key_terms']
         current_data['news'] = []
         print('Getting data for ' + key)

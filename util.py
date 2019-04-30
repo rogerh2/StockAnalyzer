@@ -64,16 +64,22 @@ def analyze_correlations(data_path):
     ticker_full = ticker.join(daily_change_col)
     corr_data_change = ticker_full.corr()['daily_change'][0:-1]
     corr_data_open = ticker_full.corr()['1. open'][0:-1]
+
     for data_name in corr_data_change.index.values:
         if np.abs(corr_data_change.loc[data_name]) > 0.4:
             ticker_full.plot(x=data_name, y='daily_change', style=['rx'])
             plt.title(data_name + 'vs daily_change: ' + num2str(corr_data_change.loc[data_name], 2))
+
         if (np.abs(corr_data_open.loc[data_name]) > 0.4) and (np.abs(corr_data_open.loc[data_name]) < 1):
             ticker.plot(x=data_name, y='1. open', style=['rx'])
             plt.title(data_name + 'vs open: ' + num2str(corr_data_open.loc[data_name], 2))
+
+    plt.figure()
+    plt.plot(ticker_full.daily_change.values[0:-1], ticker_full.daily_change.values[1::], 'rx')
+    plt.title('Daily Change Autocorellation: ' + num2str(ticker_full.daily_change.autocorr(), 3))
 
     plt.show()
 
 
 if __name__ == "__main__":
-    analyze_correlations('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/stock_data_forAspen Aerogels_from 2019-04-29.csv')
+    analyze_correlations('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/stock_data_forRegional Health_from 2019-04-29.csv')
