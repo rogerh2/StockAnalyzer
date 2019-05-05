@@ -17,40 +17,70 @@ alpha_vantage_api_key = input('What is the Alpha Vantage API key?:')
 NEWSAPI = NewsApiClient(api_key=news_api_key)
 ALPHA_TS = TimeSeries(key=alpha_vantage_api_key, output_format='pandas')
 ALL_TICKERS = {
-        'NAO': {'key_terms':  # noticesed trends with news polarity
-                    ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
-                'name': 'Nordic American Offshore'},
-        'ROSE': {'key_terms':  # Notice strong trends with drilling googletrends and weak trends with news polarity
-                     ['Delaware Basin', 'drilling', 'oil', 'natural gas', 'petroleum'],
-                 'name': 'Rosehill Resources'},
-        'RHE': {'key_terms':
-                    ['AdCare Health Systems', 'healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis', 'Northwest Property Holdings', 'CP Nursing', 'ADK Georgia', 'Attalla Nursing'],
-                'name': 'Regional Health'},
-        'MAN': {'key_terms':
-                    ['staffing company', 'contractor', 'proffesional services', 'business services', 'administrative services'],
-                'name': 'ManpowerGroup'},
-        'AMD':{'key_terms':
-                    ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
-                'name': 'Advanced Micro Devices'},
-        'ARA':{'key_terms':
-                    ['dialysis', 'renal', 'nephrologist', 'kidney disease', 'kidney failure'],
-                'name': 'American Renal Associates Holdings'},
-        'ADNT':{'key_terms':
-                    ['car', 'automotive', 'dealerships', 'used car', 'automotive seating', 'automotive supplier'],
-                'name': 'Adient PLC'},
-        'ASPN': {'key_terms':
-                    ['aerogel', 'insulation', 'energy', 'pyrogel', 'cryogel'],
-                 'name': 'Aspen Aerogels'},
-        'TLSA': {'key_terms':
-                    ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics'],
-                 'name': 'Tiziana Life Sciences'},
-        'MRNA': {'key_terms':
-                    ['Pharma', 'cancer', 'immune disease', 'inflammation', 'mRNA', 'gene therapy', 'regenerative medicine', 'immuno-oncology', 'rare diseases'],
-                 'name': 'Moderna'},
-        'IMTE': {'key_terms':
-                    ['telecommunications', 'cyber security', 'big data', 'IT services', 'media services'],
-                 'name': 'Integrated Media Technology'}
-    }
+    'NAO': {'key_terms':  # noticesed trends with news polarity
+                ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
+            'name': 'Nordic American Offshore'},
+    'ROSE': {'key_terms':  # Notice strong trends with drilling googletrends and weak trends with news polarity
+                 ['Delaware Basin', 'drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling'],
+             'name': 'Rosehill Resources'},
+    'RHE': {'key_terms':
+                ['AdCare Health Systems', 'healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis', 'Northwest Property Holdings', 'CP Nursing', 'ADK Georgia', 'Attalla Nursing'],
+            'name': 'Regional Health'},
+    'MAN': {'key_terms':
+                ['staffing company', 'contractor', 'proffesional services', 'business services', 'administrative services'],
+            'name': 'ManpowerGroup'},
+    'AMD':{'key_terms':
+                ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
+            'name': 'Advanced Micro Devices'},
+    'ARA':{'key_terms':
+                ['dialysis', 'renal', 'nephrologist', 'kidney disease', 'kidney failure'],
+            'name': 'American Renal Associates Holdings'},
+    'ADNT':{'key_terms':
+                ['car', 'automotive', 'dealerships', 'used car', 'automotive seating', 'automotive supplier'],
+            'name': 'Adient PLC'},
+    'ASPN': {'key_terms':
+                ['aerogel', 'insulation', 'energy', 'pyrogel', 'cryogel'],
+             'name': 'Aspen Aerogels'},
+    'TLSA': {'key_terms':
+                ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics'],
+             'name': 'Tiziana Life Sciences'},
+    'MRNA': {'key_terms':
+                ['Pharma', 'cancer', 'immune disease', 'inflammation', 'mRNA', 'gene therapy', 'regenerative medicine', 'immuno-oncology', 'rare diseases'],
+             'name': 'Moderna'},
+    'IMTE': {'key_terms':
+                ['telecommunications', 'cyber security', 'big data', 'IT services', 'media services'],
+             'name': 'Integrated Media Technology'},
+    'ENVA': {'key_terms':
+                ['financial services', 'big data', 'loans', 'financing'],
+         'name': 'Enova'},
+    'FET': {'key_terms':
+                ['drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling'],
+         'name': 'Forum Energy Technologies'},
+    'VSLR': {'key_terms':
+                    ['Tesla', 'solar', 'clean energy', 'drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling'],
+             'name': 'Vivint Solar'},
+    'ABG': {'key_terms':
+                 ['automotive', 'auto dealerships', 'cars', 'Tesla', 'used cars', 'new cars'],
+             'name': 'Asbury Automotive Group'},
+    'LAD': {'key_terms':
+                 ['automotive', 'auto dealerships', 'cars', 'Tesla', 'used cars', 'new cars'],
+             'name': 'Lithia Motors'},
+    'OOMA': {'key_terms':
+                 ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service'],
+             'name': 'Ooma'},
+    'MX': {'key_terms':
+                     ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
+                 'name': 'MagnaChip Semiconductor'},
+    'EXR': {'key_terms':
+               ['self-storage', 'Marie Kondo', 'relocating', 'moving', 'long term storage'],
+           'name': 'Extra Space Storage'},
+    'JOE': {'key_terms':
+               ['Florida real estate', 'Florida land prices', 'Florida', 'residential real estate', 'commercial real estate', 'rural land', 'Florida forests'],
+           'name': 'St. Joe Co.'},
+    'PRPO': {'key_terms':
+                ['hospitals', 'AI and medicine', 'deep learning', 'meadical misdiagnosis', 'cancer'],
+            'name': 'Precipio'}
+}
 
 class News:
 
@@ -104,6 +134,7 @@ class News:
             mean_subjectivity = 0
 
         return mean_polarity, mean_subjectivity
+
 
     def get_data(self, key, day):
         if 'num_articles' in key:
@@ -236,10 +267,10 @@ class Corporation(Ticker):
 
     def save_data(self):
         self.join_data_into_dataframes()
-        self.df.to_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/' + 'stock_data_for' + self.name + '_from ' + self.df.index.values[-1] + '.csv')
+        self.df.to_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/' + self.name + '_from ' + self.df.index.values[-1] + '.csv')
 
 def create_and_save_data():
-    tickers_list = ['TLSA', 'MRNA', 'IMTE', 'ARA', 'RHE']
+    tickers_list = ['MX', 'EXR', 'JOE', 'PRPO']
 
     news_objects = {}
 
@@ -265,9 +296,6 @@ def create_and_save_data():
             current_corp = Corporation(current_data['name'], key, current_list, None)
         current_corp.save_data()
 
-
-
-# TODO make class to find statistical relationship between key term data and financial data for a given company: Stats
 # TODO make jupyter notebook for viewing data
 
 if __name__ == "__main__":
