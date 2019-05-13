@@ -1,8 +1,11 @@
 from alpha_vantage.timeseries import TimeSeries
 import quandl
+import os
+import re
 import numpy as np
 import pandas as pd
 from datetime import datetime as dt
+from datetime import timedelta
 from newsapi import NewsApiClient
 from pytrends.request import TrendReq
 from transform_functions import functions
@@ -16,8 +19,16 @@ from util import num2str
 # --definition of global variables--
 PYTREND = TrendReq(tz=300)
 #TODO put api keys in a file that is automatically read when the script is executed
-news_api_key = input('What is the News API key?:')
-alpha_vantage_api_key = input('What is the Alpha Vantage API key?:')
+api_keys_file_path = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/APIKeys.txt'
+api_keys_file_exists = os.path.isfile(api_keys_file_path)
+if api_keys_file_exists:
+    with open(api_keys_file_path, 'r') as api_keys:
+        all_keys = api_keys.readlines()
+        news_api_key = re.search('(?<=News API Key: ).*', all_keys[0])[0]
+        alpha_vantage_api_key = re.search('(?<=Alpha-Vantage API Key: ).*', all_keys[2])[0]
+else:
+    news_api_key = input('What is the News API key?:')
+    alpha_vantage_api_key = input('What is the Alpha Vantage API key?:')
 NEWSAPI = NewsApiClient(api_key=news_api_key)
 ALPHA_TS = TimeSeries(key=alpha_vantage_api_key, output_format='pandas')
 ALL_TICKERS = {
@@ -78,13 +89,15 @@ ALL_TICKERS = {
     'EXR': {'key_terms':
                ['self-storage', 'Marie Kondo', 'relocating', 'moving', 'long term storage'],
            'name': 'Extra Space Storage'},
-    'JOE': {'key_terms':
-               ['Florida real estate', 'Florida land prices', 'Florida', 'residential real estate', 'commercial real estate', 'rural land', 'Florida forests'],
-           'name': 'St. Joe Co'},
+    'OMI': {'key_terms':
+               ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics', 'hospitals', 'healthcare suppliers'],
+           'name': 'Owens & Minor'},
     'PRPO': {'key_terms':
                 ['hospitals', 'AI and medicine', 'deep learning', 'meadical misdiagnosis', 'cancer'],
             'name': 'Precipio'}
 }
+STOCK_DATA_PATH = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data'
+FMT = "%Y-%m-%d"
 
 # --functions used for analysis--
 def inv_t(t):
@@ -110,7 +123,7 @@ class News:
         articles = NEWSAPI.get_everything(q=term, language='en')
         self.articles = {}
         utc_fmt = '%Y-%m-%dT%H:%M:%S'
-        est_fmt = "%Y-%m-%d"
+        est_fmt = FMT
         days_list = [convert_utc_str_to_est_str(article["publishedAt"], utc_fmt, est_fmt) for article in
                      articles['articles']]
         self.days = []
@@ -293,29 +306,34 @@ class Corporation(Ticker):
 class Stats:
 
     def __init__(self, data_path):
-        ticker = pd.read_csv(data_path, index_col=0)
-        daily_change_col = ticker['4. close'] - ticker['1. open']
+        stock_data = pd.read_csv(data_path, index_col=0)
+        daily_change_col = stock_data['4. close'] - stock_data['1. open']
         daily_change_col.name = 'daily_change'
-        self.ticker = ticker.join(daily_change_col)
-
+        self.stock_data = stock_data.join(daily_change_col)
 
     def create_time_dependent_arr(self, header_to_convert, t_func=inv_t, start_val=20):
-        arr_to_convert = self.ticker[header_to_convert].values / np.max(self.ticker[header_to_convert].fillna(0).values)
+        arr_to_convert = self.stock_data[header_to_convert].values / np.max(self.stock_data[header_to_convert].fillna(0).values)
 
         new_arr = np.array([])
+        current_term = 0
 
         for i in range(start_val, len(arr_to_convert)):
+            if np.isnan(arr_to_convert[i]):
+                new_arr = np.append(new_arr, current_term)
+                continue
             current_term = 0#arr_to_convert[i]
             for j in range(0, start_val - 1):
                 t = start_val - j
-                current_term += arr_to_convert[i-t] * t_func(t)
+                if not np.isnan(arr_to_convert[i-t]):
+                    current_add = arr_to_convert[i-t] * t_func(t)
+                    current_term += current_add
 
             new_arr = np.append(new_arr, current_term)
 
         return new_arr
 
     def fit_time_dependent_arr_to_arr(self, t_dependent_arr_header, arr_header, t_func=inv_t, start_val=20):
-        arr = self.ticker[arr_header].values[start_val::]
+        arr = self.stock_data[arr_header].values[start_val::]
         t_dependent_arr = self.create_time_dependent_arr(t_dependent_arr_header, t_func=t_func, start_val=start_val)
         no_nan_arrs = eliminate_nans_equally([arr, t_dependent_arr])
         daily_open_no_nan = no_nan_arrs[0]
@@ -349,7 +367,7 @@ class Stats:
         return corr
 
     def check_indicators(self):
-        ticker = self.ticker
+        ticker = self.stock_data
         corr_header = '1. open'
         corr_data = ticker.corr()[corr_header]
         indicators = {}
@@ -359,26 +377,30 @@ class Stats:
                 continue
 
             current_corr = corr_data.loc[data_name]
-            if (np.abs(current_corr) < 0.4):
+            if (np.abs(current_corr) < 0.25):
+                continue
+
+            if not (data_name + '_polarity') in self.stock_data.keys():
                 continue
 
             current_t_dependent_corr = self.find_correlation_coeff_for_time_depedent_arr_vs_arr(data_name, corr_header)
-            if (current_t_dependent_corr > np.abs(current_corr)):
+            # if (np.abs(current_t_dependent_corr) < np.abs(current_corr)):
+            #     current_t_dependent_corr = current_corr
                 # TODO generally clean this up
-                news_polarity = np.sum(self.ticker[data_name + '_polarity'].dropna().values * self.ticker[data_name + '_num_articles'].dropna().values) / np.sum(self.ticker[data_name + '_num_articles'].dropna().values)
-                polarity_corr = corr_data.loc[data_name + '_polarity']
-                news_subjectivity = np.sum(self.ticker[data_name + '_subjectivity'].dropna().values * self.ticker[data_name + '_num_articles'].dropna().values) / np.sum(self.ticker[data_name + '_num_articles'].dropna().values)
-                subjectivity_corr = corr_data.loc[data_name + '_subjectivity']
-                prior_change = 100 * self.ticker.daily_change.dropna().values[-1] / self.ticker[corr_header].dropna().values[-1]
-                prior_change_corr = self.ticker.daily_change.autocorr()
+            news_polarity = np.sum(self.stock_data[data_name + '_polarity'].dropna().values * self.stock_data[data_name + '_num_articles'].dropna().values) / np.sum(self.stock_data[data_name + '_num_articles'].dropna().values)
+            polarity_corr = corr_data.loc[data_name + '_polarity']
+            news_subjectivity = np.sum(self.stock_data[data_name + '_subjectivity'].dropna().values * self.stock_data[data_name + '_num_articles'].dropna().values) / np.sum(self.stock_data[data_name + '_num_articles'].dropna().values)
+            subjectivity_corr = corr_data.loc[data_name + '_subjectivity']
+            prior_change = 100 * self.stock_data.daily_change.dropna().values[-1] / self.stock_data[corr_header].dropna().values[-1]
+            prior_change_corr = self.stock_data.daily_change.autocorr()
 
-                indicators[data_name] = {'Polarity':(news_polarity, polarity_corr), 'Subjectivity':(news_subjectivity, subjectivity_corr), 'Google Trend Correlation':current_t_dependent_corr}
-                indicators['Previous Movement'] = (prior_change, prior_change_corr)
+            indicators[data_name] = {'Polarity':(news_polarity, polarity_corr), 'Subjectivity':(news_subjectivity, subjectivity_corr), 'Google Trend Correlation':current_t_dependent_corr}
+            indicators['Previous Movement'] = (prior_change, prior_change_corr)
 
         return indicators
 
     def analyze_correlations(self, corr_header):
-        ticker = self.ticker
+        ticker = self.stock_data
         corr_data = ticker.corr()[corr_header]
 
         for data_name in corr_data.index.values:
@@ -389,11 +411,95 @@ class Stats:
         plt.show()
 
     def plot_autocorrelation(self, header):
-        data = self.ticker[header]
+        data = self.stock_data[header]
         plt.figure()
         plt.plot(data.values[0:-1], data.values[1::], 'rx')
         plt.title('Daily Change Autocorellation: ' + num2str(data.autocorr(), 3))
         plt.show()
+
+class MultiSymbolStats:
+
+    def __init__(self, tickers_list, date, folder_path=STOCK_DATA_PATH):
+        self.stats = {}
+        for ticker in tickers_list:
+            fname = folder_path + '/' +date + '_' + ticker + '_' + ALL_TICKERS[ticker]['name'] + '.csv'
+            file_does_not_exist = not os.path.isfile(fname)
+            if file_does_not_exist:
+                continue
+            self.stats[ticker] = Stats(fname)
+
+    def create_indicator_rows_for_symbol(self, ticker):
+        indicators = self.stats[ticker].check_indicators()
+        if len(indicators) == 0:
+            return None
+        data_headers = ['Prior Change', 'Prior Change Correlation', 'Polarity', 'Polarity Correlation', 'Subjectivity', 'Subjectivity Correlation', 'Google Trend Correlation']
+        data = {}
+        initial_value = np.array([])
+        key_words = []
+        for header in data_headers:
+            if 'Prior' in header:
+                for i in range(0, 2):
+                    data[data_headers[i]] = indicators['Previous Movement'][i] * np.ones((len(indicators) - 1))
+            else:
+                data[header] = initial_value
+
+        for key in indicators.keys():
+            if ('Previous' in key):
+                continue
+            current_ind = indicators[key]
+            key_words.append(ticker + '-' + key)
+            for ind in current_ind.keys():
+                if not 'Correlation' in ind:
+                    data[ind] = np.append(data[ind], current_ind[ind][0])
+                    data[ind + ' Correlation'] = np.append(data[ind + ' Correlation'], current_ind[ind][1])
+                else:
+                    data[ind] = np.append(data[ind], current_ind[ind])
+
+        df = pd.DataFrame(data, index=key_words)
+        return df
+
+    def creat_indicator_dfs(self):
+        df = None
+        for ticker in self.stats.keys():
+            current_df = self.create_indicator_rows_for_symbol(ticker)
+            if current_df is None:
+                continue
+            if df is None:
+                df = current_df
+            else:
+                df = pd.concat((df, current_df))
+
+        return df
+
+    def print_indicators(self, ticker, indicators):
+        print('\n' + ticker)
+        print('Previous Movement' + ' - value: ' + num2str(indicators['Previous Movement'][0], 3) + '% | correlation coefficient: ' + num2str(
+            indicators['Previous Movement'][1], 3))
+        for key in indicators.keys():
+            if ('Previous' in key):
+                continue
+            print('-' + key + '-')
+            current_ind = indicators[key]
+            print('Google Trend Correlation: ' + num2str(current_ind['Google Trend Correlation'], 3))
+            news_score = 0
+            for ind in current_ind.keys():
+                if ('Google' in ind):
+                    continue
+                print(ind + ' - value: ' + num2str(current_ind[ind][0], 3) + ' | correlation coefficient: '+ num2str(current_ind[ind][1], 3))
+                news_score += current_ind[ind][0] + current_ind[ind][1] * current_ind['Google Trend Correlation']
+            print('Weighted news score: ' + num2str(news_score / len(current_ind.keys()), 3))
+
+        print('-------------------------------------------------------------------')
+
+    def print_indicators_for_many_symbols(self):
+        # TODO add suggested ranking
+        for ticker in self.stats.keys():
+            stat = self.stats[ticker]
+            current_indicators = stat.check_indicators()
+            if len(current_indicators.keys()) == 0:
+                continue
+            else:
+                self.print_indicators(ticker, current_indicators)
 
 #--definition of functions--
 
@@ -401,11 +507,12 @@ def create_and_save_data(tickers_list):
 
     news_objects = {}
 
-    for key in tickers_list:
+    for i in range(0, len(tickers_list)):
+        key = tickers_list[i]
         current_data = ALL_TICKERS[key]
         current_list = current_data['key_terms']
         current_data['news'] = []
-        print('Getting data for ' + key)
+        print('Getting data for ' + key + ' file ' + str(i + 1) + ' out of ' + str(len(tickers_list)))
         for term in current_list:
             print('Loading data for key word: ' + term)
             if not term in news_objects.keys():
@@ -423,40 +530,89 @@ def create_and_save_data(tickers_list):
             current_corp = Corporation(current_data['name'], key, current_list, None)
         current_corp.save_data()
 
-def print_indicators(ticker, indicators):
-    print('\n' + ticker)
-    print('Previous Movement' + ' - value: ' + num2str(indicators['Previous Movement'][0], 3) + '% | correlation coefficient: ' + num2str(
-        indicators['Previous Movement'][1], 3))
-    for key in indicators.keys():
-        if ('Previous' in key):
+def get_next_daily_change_percentage(ticker, day):
+    corp_name = ALL_TICKERS[ticker]['name']
+    current_fname_day = dt.strptime(day, FMT)
+    current_day = current_fname_day
+    give_up_counter = 0
+    # The outer loop finds files that should have the next day stored
+    while give_up_counter < 100:
+        give_up_counter += 1
+        current_fname_day = current_fname_day + timedelta(days=1)
+        current_fname_day_str = current_fname_day.strftime(FMT)
+        current_fname = STOCK_DATA_PATH + '/' +  '_'.join([current_fname_day_str, ticker, corp_name]) + '.csv'
+        file_exists = os.path.isfile(current_fname)
+        if not file_exists:
             continue
-        print('-' + key + '-')
-        current_ind = indicators[key]
-        print('Google Trend Correlation: ' + num2str(current_ind['Google Trend Correlation'], 3))
-        for ind in current_ind.keys():
-            if ('Google' in ind):
-                continue
-            print(ind + ' - value: ' + num2str(current_ind[ind][0], 3) + ' | correlation coefficient: '+ num2str(current_ind[ind][1], 3))
+        current_day_df = Stats(current_fname).stock_data
 
-    print('--------------------------------------------------------------------')
+        # The inner loop finds files the next day with data in the chosen file
+        still_searching = True
+        days = current_day_df.index.values
+        while still_searching:
+            current_day = current_day + timedelta(days=1)
+            current_day_str = current_day.strftime(FMT)
+            if not current_day_str in days:
+                break
+            change = 100 * current_day_df.daily_change.loc[current_day_str] / current_day_df['1. open'].loc[current_day_str]
+            if not np.isnan(change):
+                return change, current_day_str
 
-def print_indicators_for_many_symbols(tickers_list, date, folder_path):
+    return None, None
 
-    for ticker in tickers_list:
-        fname = folder_path + '/' +date + '_' + ticker + '_' + ALL_TICKERS[ticker]['name'] + '.csv'
-        current_stats = Stats(fname)
-        current_indicators = current_stats.check_indicators()
-        if len(current_indicators.keys()) == 0:
-            continue
+def create_training_output(df, day):
+    answer_array_header = 'Next Change'
+    df_data = {answer_array_header:np.array([])}
+    for ind in df.index.values:
+        ticker = ind.split('-')[0]
+        next_percent, _ = get_next_daily_change_percentage(ticker, day)
+        df_data[answer_array_header] = np.append(df_data[answer_array_header], next_percent)
+
+    ans_df = pd.DataFrame(df_data, index=df.index)
+    return ans_df
+
+def create_training_df(days):
+    full_df = None
+    for day in days:
+        current_stats = MultiSymbolStats(ALL_TICKERS.keys(), day)
+        current_input = current_stats.creat_indicator_dfs()
+        current_output = create_training_output(current_input, day)
+        current_df = current_input.join(current_output).reset_index(drop=True)
+        if full_df is None:
+            full_df = current_df
         else:
-            print_indicators(ticker, current_indicators)
+            full_df = pd.concat((full_df, current_df), ignore_index=True)
+
+    return full_df
+
+def plot_pos_neg_groups(x_statement, y_statement, df, cutoff_percentage=0.0, ans_header='Next Change'):
+    x = 1
+    y = x
+    for xheader, yheader in zip(x_statement.split('*'), y_statement.split('*')):
+        x = x * df[xheader]
+        y = y * df[yheader]
+
+    low_mask = df[ans_header] < cutoff_percentage
+    high_mask = df[ans_header] >= cutoff_percentage
+    plt.plot(x[low_mask], y[low_mask], 'ro')
+    plt.plot(x[high_mask], y[high_mask], 'bo')
+    left, right = plt.xlim()
+    top, bot = plt.ylim()
+    plt.plot([0, 0], [bot, top], 'r--')
+    plt.plot([left, right], [0, 0], 'r--')
+    plt.xlim(left, right)
+    plt.ylim(top, bot)
+
+
 
 if __name__ == "__main__":
-    # create_and_save_data(['JOE', 'PRPO'])
-
+    # create_and_save_data(list(ALL_TICKERS.keys()))
+    # all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-09')
+    # all_stats.print_indicators_for_many_symbols()
     # stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
     # _ = stat.analyze_correlations('1. open')
-    # stat.plot_time_dependent_arr_vs_arr('energy', '1. open', t_func=inv_t)
-    # print(np.mean(stat.ticker['energy_polarity'].dropna().values * stat.ticker['energy_num_articles'].dropna().values))
-    # ind = stat.check_indicators()
-    print_indicators_for_many_symbols(['ROSE', 'RHE', 'MAN', 'AMD', 'ARA', 'ASPN', 'TLSA', 'MRNA', 'IMTE', 'ENVA', 'FET', 'VSLR', 'OOMA', 'MX', 'EXR'], '2019-05-05', '/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data')
+    # stat.plot_time_dependent_arr_vs_arr('1. open', '1. open', t_func=inv_t)
+    # change, current_day_str = get_next_daily_change_percentage('AMD', '2019-04-30')
+    df = create_training_df(['2019-05-05', '2019-05-06', '2019-05-07', '2019-05-08', '2019-05-09'])
+    plot_pos_neg_groups('Prior Change', 'Prior Change', df, cutoff_percentage=4)
+    plt.show()

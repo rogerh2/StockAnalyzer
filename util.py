@@ -1,8 +1,6 @@
 import numpy as np
-import pandas as pd
 import scipy.stats
 import pytz
-from matplotlib import pyplot as plt
 from datetime import datetime as dt
 
 def num2str(num, digits):
