@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats
 import pytz
+from matplotlib import pyplot as plt
 from datetime import datetime as dt
 
 def num2str(num, digits):
@@ -64,3 +65,16 @@ def eliminate_nans_equally(arr_list):
             arr_list[j] = arr_list[j][current_mask]
 
     return arr_list
+
+def plot_informative_lines(ax, horz_pos=0, vert_pos=None, style='r--'):
+    fig = ax.get_figure()
+    plt.figure(fig.number)
+    plt.sca(ax)
+    left, right = plt.xlim()
+    top, bot = plt.ylim()
+    if vert_pos is not None:
+        plt.plot([vert_pos, vert_pos], [bot, top], style)
+    if horz_pos is not None:
+        plt.plot([left, right], [horz_pos, horz_pos], style)
+    plt.xlim(left, right)
+    plt.ylim(top, bot)

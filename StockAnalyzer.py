@@ -15,6 +15,10 @@ from time import sleep
 from matplotlib import pyplot as plt
 from util import eliminate_nans_equally
 from util import num2str
+from constants import ALL_TICKERS
+from constants import STOCK_DATA_PATH
+from constants import FMT
+from util import plot_informative_lines
 
 # --definition of global variables--
 PYTREND = TrendReq(tz=300)
@@ -31,73 +35,6 @@ else:
     alpha_vantage_api_key = input('What is the Alpha Vantage API key?:')
 NEWSAPI = NewsApiClient(api_key=news_api_key)
 ALPHA_TS = TimeSeries(key=alpha_vantage_api_key, output_format='pandas')
-ALL_TICKERS = {
-    'NAO': {'key_terms':  # noticesed trends with news polarity
-                ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
-            'name': 'Nordic American Offshore'},
-    'ROSE': {'key_terms':  # Notice strong trends with drilling googletrends and weak trends with news polarity
-                 ['Delaware Basin', 'drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling'],
-             'name': 'Rosehill Resources'},
-    'RHE': {'key_terms':
-                ['AdCare Health Systems', 'healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis', 'Northwest Property Holdings', 'CP Nursing', 'ADK Georgia', 'Attalla Nursing'],
-            'name': 'Regional Health'},
-    'MAN': {'key_terms':
-                ['staffing company', 'contractor', 'proffesional services', 'business services', 'administrative services'],
-            'name': 'ManpowerGroup'},
-    'AMD':{'key_terms':
-                ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
-            'name': 'Advanced Micro Devices'},
-    'ARA':{'key_terms':
-                ['dialysis', 'renal', 'nephrologist', 'kidney disease', 'kidney failure'],
-            'name': 'American Renal Associates Holdings'},
-    'ADNT':{'key_terms':
-                ['car', 'automotive', 'dealerships', 'used car', 'automotive seating', 'automotive supplier'],
-            'name': 'Adient PLC'},
-    'ASPN': {'key_terms':
-                ['aerogel', 'insulation', 'energy', 'pyrogel', 'cryogel'],
-             'name': 'Aspen Aerogels'},
-    'TLSA': {'key_terms':
-                ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics'],
-             'name': 'Tiziana Life Sciences'},
-    'MRNA': {'key_terms':
-                ['Pharma', 'cancer', 'immune disease', 'inflammation', 'mRNA', 'gene therapy', 'regenerative medicine', 'immuno-oncology', 'rare diseases'],
-             'name': 'Moderna'},
-    'IMTE': {'key_terms':
-                ['telecommunications', 'cyber security', 'big data', 'IT services', 'media services'],
-             'name': 'Integrated Media Technology'},
-    'ENVA': {'key_terms':
-                ['financial services', 'big data', 'loans', 'financing'],
-         'name': 'Enova'},
-    'FET': {'key_terms':
-                ['drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling'],
-         'name': 'Forum Energy Technologies'},
-    'VSLR': {'key_terms':
-                    ['Tesla', 'solar', 'clean energy', 'drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling'],
-             'name': 'Vivint Solar'},
-    'ABG': {'key_terms':
-                 ['automotive', 'auto dealerships', 'cars', 'Tesla', 'used cars', 'new cars'],
-             'name': 'Asbury Automotive Group'},
-    'LAD': {'key_terms':
-                 ['automotive', 'auto dealerships', 'cars', 'Tesla', 'used cars', 'new cars'],
-             'name': 'Lithia Motors'},
-    'OOMA': {'key_terms':
-                 ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service'],
-             'name': 'Ooma'},
-    'MX': {'key_terms':
-                     ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
-                 'name': 'MagnaChip Semiconductor'},
-    'EXR': {'key_terms':
-               ['self-storage', 'Marie Kondo', 'relocating', 'moving', 'long term storage'],
-           'name': 'Extra Space Storage'},
-    'OMI': {'key_terms':
-               ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics', 'hospitals', 'healthcare suppliers'],
-           'name': 'Owens & Minor'},
-    'PRPO': {'key_terms':
-                ['hospitals', 'AI and medicine', 'deep learning', 'meadical misdiagnosis', 'cancer'],
-            'name': 'Precipio'}
-}
-STOCK_DATA_PATH = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data'
-FMT = "%Y-%m-%d"
 
 # --functions used for analysis--
 def inv_t(t):
@@ -471,6 +408,46 @@ class MultiSymbolStats:
 
         return df
 
+    def score_one_arr(self, raw_arr, corr_arr):
+        corr_mask = np.abs(corr_arr) > 0.1
+        score = np.sum(corr_mask * raw_arr * corr_arr / np.abs(raw_arr * corr_arr))
+        return score
+
+    def score_tickers(self, news_ax=None, mvmt_ax=None):
+        inds = []
+        scores = {'news':[], 'recent_movement':[]}
+        for ticker in self.stats.keys():
+            current_df = self.create_indicator_rows_for_symbol(ticker)
+            if current_df is None:
+                continue
+            pol_score = self.score_one_arr(current_df['Polarity'].values, current_df['Polarity Correlation'].values)
+            sub_score = self.score_one_arr(current_df['Subjectivity'].values, current_df['Subjectivity Correlation'].values)
+            scores['news'].append(pol_score + sub_score)
+            scores['recent_movement'].append(current_df['Prior Change'].values[0])
+            inds.append(ticker)
+        df = pd.DataFrame(data=scores, index=inds)
+
+        if news_ax is None:
+            fig, axes = plt.subplots(nrows=2, ncols=1)
+            news_ax = axes[0]
+            mvmt_ax = axes[1]
+            news_ax.set_title('News Score')
+            mvmt_ax.set_title('Most Recent Daily Change')
+        df.news.plot.bar(ax=news_ax)
+        plt.sca(news_ax)
+        plt.ylabel('Score')
+        news_ax.tick_params(
+            axis='x',  # changes apply to the x-axis
+            which='both',  # both major and minor ticks are affected
+            bottom=False,  # ticks along the bottom edge are off
+            top=False,  # ticks along the top edge are off
+            labelbottom=False)  # labels along the bottom edge are off
+        df.recent_movement.plot.bar(ax=mvmt_ax)
+        plt.sca(mvmt_ax)
+        plt.ylabel("Last Day's Movement (%)")
+
+        return news_ax, mvmt_ax
+
     def print_indicators(self, ticker, indicators):
         print('\n' + ticker)
         print('Previous Movement' + ' - value: ' + num2str(indicators['Previous Movement'][0], 3) + '% | correlation coefficient: ' + num2str(
@@ -486,8 +463,7 @@ class MultiSymbolStats:
                 if ('Google' in ind):
                     continue
                 print(ind + ' - value: ' + num2str(current_ind[ind][0], 3) + ' | correlation coefficient: '+ num2str(current_ind[ind][1], 3))
-                news_score += current_ind[ind][0] + current_ind[ind][1] * current_ind['Google Trend Correlation']
-            print('Weighted news score: ' + num2str(news_score / len(current_ind.keys()), 3))
+                news_score += current_ind[ind][0]*current_ind[ind][1] * current_ind['Google Trend Correlation']
 
         print('-------------------------------------------------------------------')
 
@@ -607,12 +583,15 @@ def plot_pos_neg_groups(x_statement, y_statement, df, cutoff_percentage=0.0, ans
 
 if __name__ == "__main__":
     # create_and_save_data(list(ALL_TICKERS.keys()))
-    # all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-09')
-    # all_stats.print_indicators_for_many_symbols()
+    all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-13')
+    news_ax, mvmt_ax = all_stats.score_tickers()
+    all_stats.print_indicators_for_many_symbols()
+    plot_informative_lines(news_ax, style='k-')
+    plot_informative_lines(mvmt_ax, style='k-')
     # stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
     # _ = stat.analyze_correlations('1. open')
     # stat.plot_time_dependent_arr_vs_arr('1. open', '1. open', t_func=inv_t)
     # change, current_day_str = get_next_daily_change_percentage('AMD', '2019-04-30')
-    df = create_training_df(['2019-05-05', '2019-05-06', '2019-05-07', '2019-05-08', '2019-05-09'])
-    plot_pos_neg_groups('Prior Change', 'Prior Change', df, cutoff_percentage=4)
+    # df = create_training_df(['2019-05-05', '2019-05-06', '2019-05-07', '2019-05-08', '2019-05-09'])
+    # plot_pos_neg_groups('Prior Change', 'Prior Change', df, cutoff_percentage=4)
     plt.show()
