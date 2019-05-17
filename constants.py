@@ -59,10 +59,10 @@ ALL_TICKERS = {
                ['self-storage', 'Marie Kondo', 'relocating', 'moving', 'long term storage'],
            'name': 'Extra Space Storage'},
     'OMI': {'key_terms':
-               ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics', 'hospitals', 'healthcare suppliers'],
+               ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics', 'hospitals', 'healthcare suppliers', 'biotech'],
            'name': 'Owens & Minor'},
     'PRPO': {'key_terms':
-                ['hospitals', 'AI and medicine', 'deep learning', 'meadical misdiagnosis', 'cancer'],
+                ['hospitals', 'AI and medicine', 'deep learning', 'meadical misdiagnosis', 'cancer', 'biotech'],
             'name': 'Precipio'},
     'AKTS': {'key_terms':
                 ['RF filter', 'acoustics', 'spkear', 'head phones', 'smart phone'],
@@ -71,7 +71,7 @@ ALL_TICKERS = {
                 ['identity theft', 'identity fraud', 'credit card fraud', 'credit card', 'drivers license'],
             'name': 'Intellicheck'},
     'PIRS': {'key_terms':
-                ['biopharmaceutical', 'pharmaceutical', 'cancer', 'immune disease', 'oncology', 'anticalin', 'rare diseases', 'gene therapy'],
+                ['biopharmaceutical', 'pharmaceutical', 'cancer', 'immune disease', 'oncology', 'anticalin', 'rare diseases', 'gene therapy', 'biotech'],
             'name': 'Pieris Pharmaceuticals'},
     'PVG': {'key_terms':
                 ['minerals', 'precious metals', 'gold', 'mining', 'silver'],
@@ -81,5 +81,17 @@ ALL_TICKERS = {
             'name': 'Alamos Gold'},
     'MAG': {'key_terms':
                 ['minerals', 'precious metals', 'gold', 'mining', 'silver', 'Mexican Silver Belt'],
-            'name': 'MAG Silver'}
+            'name': 'MAG Silver'},
+    'BPTH': {'key_terms':
+                ['biopharmaceutical', 'pharmaceutical', 'cancer', 'immune disease', 'oncology', 'leukemia', 'rare diseases', 'gene therapy', 'biotech'],
+            'name': 'Bio-Path Holdings'},
+    'MAXR': {'key_terms':
+                ['satellites', 'robotics', 'Earth imagery', 'geospatial analytics', 'space systems'],
+            'name': 'Maxar Technologies'},
+    'ZYXI': {'key_terms':
+                ['medical devices', 'electrotherapy', 'chronic pain', 'surgery', 'rehabilitation'],
+            'name': 'Zynex'},
+    'EIDX': {'key_terms':
+                ['transthyretin', 'amyloidosis', 'rare diseases', 'heart disease', 'biotech'],
+            'name': 'Zynex'}
 }

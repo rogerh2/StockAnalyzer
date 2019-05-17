@@ -365,6 +365,38 @@ class MultiSymbolStats:
                 continue
             self.stats[ticker] = Stats(fname)
 
+    def get_next_daily_change_percentage(self, ticker, day):
+        #TODO remove dual function
+        corp_name = ALL_TICKERS[ticker]['name']
+        current_fname_day = dt.strptime(day, FMT)
+        current_day = current_fname_day
+        give_up_counter = 0
+        # The outer loop finds files that should have the next day stored
+        while give_up_counter < 100:
+            give_up_counter += 1
+            current_fname_day = current_fname_day + timedelta(days=1)
+            current_fname_day_str = current_fname_day.strftime(FMT)
+            current_fname = STOCK_DATA_PATH + '/' + '_'.join([current_fname_day_str, ticker, corp_name]) + '.csv'
+            file_exists = os.path.isfile(current_fname)
+            if not file_exists:
+                continue
+            current_day_df = Stats(current_fname).stock_data
+
+            # The inner loop finds files the next day with data in the chosen file
+            still_searching = True
+            days = current_day_df.index.values
+            while still_searching:
+                current_day = current_day + timedelta(days=1)
+                current_day_str = current_day.strftime(FMT)
+                if not current_day_str in days:
+                    break
+                change = 100 * current_day_df.daily_change.loc[current_day_str] / current_day_df['1. open'].loc[
+                    current_day_str]
+                if not np.isnan(change):
+                    return change, current_day_str
+
+        return None, None
+
     def create_indicator_rows_for_symbol(self, ticker):
         indicators = self.stats[ticker].check_indicators()
         if len(indicators) == 0:
@@ -413,19 +445,31 @@ class MultiSymbolStats:
         score = np.sum(corr_mask * raw_arr * corr_arr / np.abs(raw_arr * corr_arr))
         return score
 
-    def score_tickers(self, news_ax=None, mvmt_ax=None):
+    def score_tickers(self):
         inds = []
-        scores = {'news':[], 'recent_movement':[]}
+        scores = {'news': [], 'recent_movement': []}
         for ticker in self.stats.keys():
             current_df = self.create_indicator_rows_for_symbol(ticker)
             if current_df is None:
                 continue
             pol_score = self.score_one_arr(current_df['Polarity'].values, current_df['Polarity Correlation'].values)
-            sub_score = self.score_one_arr(current_df['Subjectivity'].values, current_df['Subjectivity Correlation'].values)
+            sub_score = self.score_one_arr(current_df['Subjectivity'].values,
+                                           current_df['Subjectivity Correlation'].values)
             scores['news'].append(pol_score + sub_score)
             scores['recent_movement'].append(current_df['Prior Change'].values[0])
             inds.append(ticker)
         df = pd.DataFrame(data=scores, index=inds)
+
+        return df
+
+    #TODO finish this
+    # def compare_ticker_to_gains(self):
+    #     df = self.score_tickers()
+    #     for ticker in df.index.values:
+
+
+    def plot_score(self, news_ax=None, mvmt_ax=None):
+        df = self.score_tickers()
 
         if news_ax is None:
             fig, axes = plt.subplots(nrows=2, ncols=1)
@@ -436,12 +480,7 @@ class MultiSymbolStats:
         df.news.plot.bar(ax=news_ax)
         plt.sca(news_ax)
         plt.ylabel('Score')
-        news_ax.tick_params(
-            axis='x',  # changes apply to the x-axis
-            which='both',  # both major and minor ticks are affected
-            bottom=False,  # ticks along the bottom edge are off
-            top=False,  # ticks along the top edge are off
-            labelbottom=False)  # labels along the bottom edge are off
+        news_ax.xaxis.set_ticklabels([])
         df.recent_movement.plot.bar(ax=mvmt_ax)
         plt.sca(mvmt_ax)
         plt.ylabel("Last Day's Movement (%)")
@@ -572,19 +611,38 @@ def plot_pos_neg_groups(x_statement, y_statement, df, cutoff_percentage=0.0, ans
     high_mask = df[ans_header] >= cutoff_percentage
     plt.plot(x[low_mask], y[low_mask], 'ro')
     plt.plot(x[high_mask], y[high_mask], 'bo')
-    left, right = plt.xlim()
-    top, bot = plt.ylim()
-    plt.plot([0, 0], [bot, top], 'r--')
-    plt.plot([left, right], [0, 0], 'r--')
-    plt.xlim(left, right)
-    plt.ylim(top, bot)
+    ax = plt.gca()
+    plot_informative_lines(ax, horz_pos=0, vert_pos=0)
 
+def check_score_vs_mvmt(score_date, mv_date):
+    score_stats = MultiSymbolStats(ALL_TICKERS.keys(), score_date)
+    move_stats = MultiSymbolStats(ALL_TICKERS.keys(), mv_date)
+    score_df = score_stats.score_tickers()
+    move_df = move_stats.score_tickers()
+    new_df_data = {}
 
+    for ticker in score_df.index.values:
+        if ticker in move_df.index.values:
+            score = score_df.news[ticker]
+            mv = move_df.recent_movement[ticker]
+            if score in new_df_data.keys():
+                new_df_data[score] = np.append(new_df_data[score], mv)
+            else:
+                new_df_data[score] = np.array([mv])
+
+    data = np.array([])
+    inds = data
+    for score in new_df_data.keys():
+        data = np.append(data, np.sum(new_df_data[score] > 0))
+        inds = np.append(inds, score)
+
+    df = pd.DataFrame(data=data, index=inds)
+    df.plot.bar()
 
 if __name__ == "__main__":
     # create_and_save_data(list(ALL_TICKERS.keys()))
-    all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-13')
-    news_ax, mvmt_ax = all_stats.score_tickers()
+    all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-16')
+    news_ax, mvmt_ax = all_stats.plot_score()
     all_stats.print_indicators_for_many_symbols()
     plot_informative_lines(news_ax, style='k-')
     plot_informative_lines(mvmt_ax, style='k-')
@@ -594,4 +652,5 @@ if __name__ == "__main__":
     # change, current_day_str = get_next_daily_change_percentage('AMD', '2019-04-30')
     # df = create_training_df(['2019-05-05', '2019-05-06', '2019-05-07', '2019-05-08', '2019-05-09'])
     # plot_pos_neg_groups('Prior Change', 'Prior Change', df, cutoff_percentage=4)
+    # check_score_vs_mvmt('2019-05-13', '2019-05-14')
     plt.show()
