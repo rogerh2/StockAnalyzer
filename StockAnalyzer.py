@@ -53,6 +53,7 @@ def unity(t):
     return t
 
 #--definition of classes--
+
 class News:
 
     def __init__(self, term):
@@ -310,7 +311,14 @@ class Stats:
         indicators = {}
 
         for data_name in corr_data.index.values:
-            if ('.' in data_name) or ('_' in data_name):
+
+            if ('_' in data_name) or (data_name == '4. close'):
+                continue
+
+            if ('.' in data_name):
+                current_change = self.stock_data[data_name].dropna().values[-1] - self.stock_data[data_name].dropna().values[-2]
+                data_percent = 100 * current_change / self.stock_data[data_name].dropna().values[-2]
+                indicators['Previous ' + data_name[3::].capitalize()] = (data_percent, corr_data.loc[data_name])
                 continue
 
             current_corr = corr_data.loc[data_name]
@@ -328,11 +336,10 @@ class Stats:
             polarity_corr = corr_data.loc[data_name + '_polarity']
             news_subjectivity = np.sum(self.stock_data[data_name + '_subjectivity'].dropna().values * self.stock_data[data_name + '_num_articles'].dropna().values) / np.sum(self.stock_data[data_name + '_num_articles'].dropna().values)
             subjectivity_corr = corr_data.loc[data_name + '_subjectivity']
-            prior_change = 100 * self.stock_data.daily_change.dropna().values[-1] / self.stock_data[corr_header].dropna().values[-1]
-            prior_change_corr = self.stock_data.daily_change.autocorr()
-
             indicators[data_name] = {'Polarity':(news_polarity, polarity_corr), 'Subjectivity':(news_subjectivity, subjectivity_corr), 'Google Trend Correlation':current_t_dependent_corr}
-            indicators['Previous Movement'] = (prior_change, prior_change_corr)
+        prior_change = 100 * self.stock_data.daily_change.dropna().values[-1] / self.stock_data[corr_header].dropna().values[-1]
+        prior_change_corr = self.stock_data.daily_change.autocorr()
+        indicators['Previous Movement'] = (prior_change, prior_change_corr)
 
         return indicators
 
@@ -399,24 +406,29 @@ class MultiSymbolStats:
 
     def create_indicator_rows_for_symbol(self, ticker):
         indicators = self.stats[ticker].check_indicators()
-        if len(indicators) == 0:
+        if len(indicators) <= 8:
             return None
-        data_headers = ['Prior Change', 'Prior Change Correlation', 'Polarity', 'Polarity Correlation', 'Subjectivity', 'Subjectivity Correlation', 'Google Trend Correlation']
+        data_headers = ['Polarity', 'Polarity Correlation', 'Subjectivity', 'Subjectivity Correlation', 'Google Trend Correlation']
         data = {}
         initial_value = np.array([])
         key_words = []
         for header in data_headers:
-            if 'Prior' in header:
-                for i in range(0, 2):
-                    data[data_headers[i]] = indicators['Previous Movement'][i] * np.ones((len(indicators) - 1))
-            else:
-                data[header] = initial_value
+            data[header] = initial_value
 
         for key in indicators.keys():
-            if ('Previous' in key):
+            if ('Split' in key) or ('Dividend' in key):
                 continue
-            current_ind = indicators[key]
+            if ('Previous' in key):
+                if key in data.keys():
+                    data[key] = np.append(data[key], indicators[key][0])
+                    data[key + ' Correlation'] = np.append(data[key], indicators[key][1])
+                else:
+                    data[key] = np.array([indicators[key][0]])
+                    data[key + ' Correlation'] = np.array([indicators[key][1]])
+                continue
+
             key_words.append(ticker + '-' + key)
+            current_ind = indicators[key]
             for ind in current_ind.keys():
                 if not 'Correlation' in ind:
                     data[ind] = np.append(data[ind], current_ind[ind][0])
@@ -456,7 +468,7 @@ class MultiSymbolStats:
             sub_score = self.score_one_arr(current_df['Subjectivity'].values,
                                            current_df['Subjectivity Correlation'].values)
             scores['news'].append(pol_score + sub_score)
-            scores['recent_movement'].append(current_df['Prior Change'].values[0])
+            scores['recent_movement'].append(current_df['Previous Movement'].values[0])
             inds.append(ticker)
         df = pd.DataFrame(data=scores, index=inds)
 
@@ -641,16 +653,17 @@ def check_score_vs_mvmt(score_date, mv_date):
 
 if __name__ == "__main__":
     # create_and_save_data(list(ALL_TICKERS.keys()))
-    all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-16')
-    news_ax, mvmt_ax = all_stats.plot_score()
-    all_stats.print_indicators_for_many_symbols()
-    plot_informative_lines(news_ax, style='k-')
-    plot_informative_lines(mvmt_ax, style='k-')
+    # all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-16')
+    # news_ax, mvmt_ax = all_stats.plot_score()
+    # all_stats.print_indicators_for_many_symbols()
+    # plot_informative_lines(news_ax, style='k-')
+    # plot_informative_lines(mvmt_ax, style='k-')
     # stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
     # _ = stat.analyze_correlations('1. open')
     # stat.plot_time_dependent_arr_vs_arr('1. open', '1. open', t_func=inv_t)
     # change, current_day_str = get_next_daily_change_percentage('AMD', '2019-04-30')
-    # df = create_training_df(['2019-05-05', '2019-05-06', '2019-05-07', '2019-05-08', '2019-05-09'])
-    # plot_pos_neg_groups('Prior Change', 'Prior Change', df, cutoff_percentage=4)
+    df = create_training_df(['2019-05-05', '2019-05-06', '2019-05-07', '2019-05-08', '2019-05-09', '2019-05-10', '2019-05-11', '2019-05-12', '2019-05-13', '2019-05-14', '2019-05-15'])
+    # plot_pos_neg_groups('Previous Movement', 'Previous Movement', df, cutoff_percentage=4)
     # check_score_vs_mvmt('2019-05-13', '2019-05-14')
-    plt.show()
+    # plt.show()
+    df.to_csv('training_data.csv')
