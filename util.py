@@ -85,8 +85,12 @@ def plot_informative_lines(ax, horz_pos=0, vert_pos=None, style='r--'):
 
 def balance_classes(data, upsample_mask, new_sample_size, upsample=True, seed=1):
     data_to_sample = data[upsample_mask, :]
-    resampled_data = resample(data_to_sample, replace=upsample, n_samples=(new_sample_size - np.sum(upsample_mask)), random_state=seed)
-    balanced_data = shuffle(np.vstack((data, resampled_data)), random_state=seed)
+    if  new_sample_size > np.sum(upsample_mask):
+        resampled_data = resample(data_to_sample, replace=upsample, n_samples=(new_sample_size - np.sum(upsample_mask)), random_state=seed)
+        balanced_data = shuffle(np.vstack((data, resampled_data)), random_state=seed)
+    else:
+        balanced_data = data
+
 
     return balanced_data
 

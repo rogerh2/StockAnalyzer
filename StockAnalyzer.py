@@ -531,7 +531,7 @@ class MultiSymbolStats:
 #--definition of functions--
 
 def create_and_save_data(tickers_list):
-
+    # TODO use multiprocessing to speedup
     news_objects = {}
 
     for i in range(0, len(tickers_list)):
@@ -604,7 +604,7 @@ def create_training_df(days):
         current_stats = MultiSymbolStats(ALL_TICKERS.keys(), day)
         current_input = current_stats.creat_indicator_dfs()
         current_output = create_training_output(current_input, day)
-        current_df = current_input.join(current_output).reset_index(drop=True)
+        current_df = current_input.join(current_output)#.reset_index(drop=True)
         if full_df is None:
             full_df = current_df
         else:
@@ -652,18 +652,32 @@ def check_score_vs_mvmt(score_date, mv_date):
     df.plot.bar()
 
 if __name__ == "__main__":
-    # create_and_save_data(list(ALL_TICKERS.keys()))
-    # all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-16')
-    # news_ax, mvmt_ax = all_stats.plot_score()
-    # all_stats.print_indicators_for_many_symbols()
-    # plot_informative_lines(news_ax, style='k-')
-    # plot_informative_lines(mvmt_ax, style='k-')
-    # stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
-    # _ = stat.analyze_correlations('1. open')
-    # stat.plot_time_dependent_arr_vs_arr('1. open', '1. open', t_func=inv_t)
-    # change, current_day_str = get_next_daily_change_percentage('AMD', '2019-04-30')
-    df = create_training_df(['2019-05-05', '2019-05-06', '2019-05-07', '2019-05-08', '2019-05-09', '2019-05-10', '2019-05-11', '2019-05-12', '2019-05-13', '2019-05-14', '2019-05-15'])
-    # plot_pos_neg_groups('Previous Movement', 'Previous Movement', df, cutoff_percentage=4)
-    # check_score_vs_mvmt('2019-05-13', '2019-05-14')
-    # plt.show()
-    df.to_csv('training_data.csv')
+    task = 'score_data'
+
+    if task == 'get_data':
+        tickers = ['ROSE', 'RHE', 'ARA', 'ASPN', 'TLSA', 'MRNA', 'ENVA', 'FET', 'VSLR', 'ABG', 'LAD', 'OOMA', 'PRPO', 'AKTS', 'IDN', 'PIRS', 'PVG', 'AGI', 'MAG', 'BPTH', 'MAXR', 'ZYXI', 'EIDX', 'RLGT', 'WPRT', 'SHEN']
+        create_and_save_data(tickers)
+    elif task == 'score_data':
+        all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-21')
+        news_ax, mvmt_ax = all_stats.plot_score()
+        all_stats.print_indicators_for_many_symbols()
+        plot_informative_lines(news_ax, style='k-')
+        plot_informative_lines(mvmt_ax, style='k-')
+        plt.show()
+    elif task == 'create_training_data':
+        train_df = create_training_df(['2019-05-05', '2019-05-07', '2019-05-08', '2019-05-10', '2019-05-11', '2019-05-12', '2019-05-13', '2019-05-15'])
+        val_df = create_training_df(['2019-05-09', '2019-05-06', '2019-05-14'])
+        test_df = create_training_df(['2019-05-19'])
+        train_df.to_csv('training_data.csv')
+        val_df.to_csv('val_data.csv')
+        test_df.to_csv('test_data.csv')
+    elif task == 'create_prediction_data':
+        pred_df = create_training_df(['2019-05-21'])
+        pred_df.to_csv('pred_data.csv')
+    elif task == 'other':
+        stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
+        _ = stat.analyze_correlations('1. open')
+        stat.plot_time_dependent_arr_vs_arr('1. open', '1. open', t_func=inv_t)
+        change, current_day_str = get_next_daily_change_percentage('AMD', '2019-04-30')
+        check_score_vs_mvmt('2019-05-13', '2019-05-14')
+        plt.show()

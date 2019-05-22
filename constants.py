@@ -52,11 +52,8 @@ ALL_TICKERS = {
     'OOMA': {'key_terms':
                  ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service'],
              'name': 'Ooma'},
-    'MX': {'key_terms':
-                     ['semiconductor', 'computer', 'Apple', 'Intel', 'Microprocessor', 'NVIDIA'],
-                 'name': 'MagnaChip Semiconductor'},
     'EXR': {'key_terms':
-               ['self-storage', 'Marie Kondo', 'relocating', 'moving', 'long term storage'],
+               ['self-storage', 'Marie Kondo', 'relocating', 'moving', 'long term storage', 'warehousing'],
            'name': 'Extra Space Storage'},
     'OMI': {'key_terms':
                ['Pharma', 'cancer', 'immune disease', 'inflammation', 'therapeutics', 'hospitals', 'healthcare suppliers', 'biotech'],
@@ -93,5 +90,15 @@ ALL_TICKERS = {
             'name': 'Zynex'},
     'EIDX': {'key_terms':
                 ['transthyretin', 'amyloidosis', 'rare diseases', 'heart disease', 'biotech'],
-            'name': 'Zynex'}
+            'name': 'Zynex'},
+    'RLGT': {'key_terms':
+                ['transportation', 'logistics', 'shipping', 'railroad', 'freight', 'long term storage', 'warehousing'],
+            'name': 'Radiant Logistics'},
+    'WPRT': {'key_terms':
+                ['clean energy', 'drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling', 'transportation', 'logistics'],
+            'name': 'Westport Fuel Systems'},
+    'SHEN': {'key_terms':
+                ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service'],
+            'name': 'Shenandoah Telecommunications Company'}
+
 }
