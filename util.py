@@ -94,6 +94,14 @@ def balance_classes(data, upsample_mask, new_sample_size, upsample=True, seed=1)
 
     return balanced_data
 
+def merge_dicts(dicts):
+    super_dict = {}
+    for d in dicts:
+        for k, v in d.items():  # d.items() in Python 3+
+            super_dict.setdefault(k, v)
+
+    return super_dict
+
 
 class BaseNN:
     # This class is meant to serve as a parent class to neural net based machine learning classes

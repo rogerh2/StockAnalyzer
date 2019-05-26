@@ -31,8 +31,8 @@ def create_data_for_train_test(data):
     X = X[shuffled_nan_mask, :]
     Y = shuffle(dataset[:, (dataset.shape[1]-1)], random_state=2)[shuffled_nan_mask]
     neg_y_mask = Y < 0
-    low_y_mask = (Y > 0) * (Y < 3)
-    hi_y_mask = (Y > 3)
+    low_y_mask = (Y > 0) * (Y < 1)
+    hi_y_mask = (Y > 1)
 
     Y_unbalanced = np.hstack((neg_y_mask.reshape(len(Y), 1), low_y_mask.reshape(len(Y), 1), hi_y_mask.reshape(len(Y), 1)))
     hi_balance_mask = hi_y_mask
@@ -72,16 +72,16 @@ class ClassifierNN(BaseNN):
 
 
 if __name__ == "__main__":
-    train = False
+    train = True
     #TODO move to StockAnalyzer
     if train:
-        train_dataset = pandas.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/training_data.csv', index_col=0).drop_duplicates(subset = "Previous Movement", keep = 'first', inplace = False)
+        train_dataset = pandas.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/between_training_data.csv', index_col=0).drop_duplicates(subset = "Previous Movement", keep = 'first', inplace = False)
         train_dataset = normalize_rows(train_dataset, ['Previous Movement'], [100])
 
-        val_dataset = pandas.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/val_data.csv', index_col=0).drop_duplicates(subset = "Previous Movement", keep = 'first', inplace = False)
+        val_dataset = pandas.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/between_val_data.csv', index_col=0).drop_duplicates(subset = "Previous Movement", keep = 'first', inplace = False)
         val_dataset = normalize_rows(val_dataset, ['Previous Movement'], [100])
 
-        test_dataset = pandas.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/test_data.csv', index_col=0)
+        test_dataset = pandas.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/between_test_data.csv', index_col=0)
         test_dataset = normalize_rows(test_dataset, ['Previous Movement'], [100])
 
         X_train, Y_train = create_data_for_train_test(train_dataset)
@@ -95,20 +95,23 @@ if __name__ == "__main__":
         train_val_split = X_val.shape[0] / X_fit.shape[0]
 
         class_nn = ClassifierNN()
-        class_nn.train_model(X_fit, Y_fit, 200, batch_size=5, training_patience=200, val_split=train_val_split, file_name='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_predictor_20190521.h5')
+        class_nn.train_model(X_fit, Y_fit, 50, batch_size=5, training_patience=200, val_split=0.1)#, file_name='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_predictor_20190521.h5')
         test_data = class_nn.test_model(X_test, Y_test, show_plots=False)
-        for key in test_data:
-            df = pandas.DataFrame(test_data[key], index=test_dataset.index.values).to_csv(key + '.csv', index=True)
+        df1 = pandas.DataFrame(test_data['Predicted'], index=test_dataset.index.values)
+        df2 = pandas.DataFrame(test_data['Measured'], index=test_dataset.index.values)
+        df = pandas.concat((df1, df2), axis=1)
+        df.to_csv('test_results.csv')
+
+        # estimator = KerasClassifier(build_fn=class_nn, epochs=200, batch_size=5, verbose=2)
+        # kfold = KFold(n_splits=10, shuffle=True, random_state=class_nn.seed)
+        #
+        # results = cross_val_score(estimator, X_fit, Y_fit, cv=kfold)
+        # print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
     else:
         class_nn = ClassifierNN(model_path='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_predictor_20190521.h5')
         dataset = pandas.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/pred_data.csv', index_col=0)
         dataset = normalize_rows(dataset, ['Previous Movement'], [100])
         X = dataset.values[:, 0:INPUT_SIZE]
         prediction = class_nn.model.predict(X)
-        pandas.DataFrame(data=prediction, columns=['negative', 'weak positive', 'strong positive'], index=dataset.index.values).to_csv('Predictions_20190521.csv', index=True)
-        # estimator = KerasClassifier(build_fn=class_nn, epochs=200, batch_size=5, verbose=2)
-        # kfold = KFold(n_splits=10, shuffle=True, random_state=class_nn.seed)
-        #
-        # results = cross_val_score(estimator, X, dummy_y, cv=kfold)
-        # print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
+        pandas.DataFrame(data=prediction, columns=['negative', 'weak positive', 'strong positive'], index=dataset.index.values).to_csv('Predictions_20190522.csv', index=True)
 

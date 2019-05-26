@@ -52,6 +52,28 @@ def exp_decay(t):
 def unity(t):
     return t
 
+def create_between_day_change_col(df):
+    opens = df['1. open'].values
+    closes = df['4. close'].values
+    between_day_change = np.array([np.nan])
+    for i in range(1, len(opens)):
+        open = opens[i]
+        if np.isnan(open):
+            between_day_change = np.append(between_day_change, np.nan)
+            continue
+
+        close = np.nan
+        j = 1
+        while np.isnan(close) and (j <= i):
+            close = closes[i-j]
+            j += 1
+
+        between_day_change = np.append(between_day_change, open - close)
+
+    return between_day_change
+
+
+
 #--definition of classes--
 
 class News:
@@ -247,7 +269,10 @@ class Stats:
         stock_data = pd.read_csv(data_path, index_col=0)
         daily_change_col = stock_data['4. close'] - stock_data['1. open']
         daily_change_col.name = 'daily_change'
-        self.stock_data = stock_data.join(daily_change_col)
+        between_day_change_col =  pd.Series(data=create_between_day_change_col(stock_data), index=daily_change_col.index)
+        between_day_change_col.name = 'between_day_change'
+        stock_data = stock_data.join(daily_change_col)
+        self.stock_data = stock_data.join(between_day_change_col)
 
     def create_time_dependent_arr(self, header_to_convert, t_func=inv_t, start_val=20):
         arr_to_convert = self.stock_data[header_to_convert].values / np.max(self.stock_data[header_to_convert].fillna(0).values)
@@ -557,7 +582,7 @@ def create_and_save_data(tickers_list):
             current_corp = Corporation(current_data['name'], key, current_list, None)
         current_corp.save_data()
 
-def get_next_daily_change_percentage(ticker, day):
+def get_next_daily_change_percentage(ticker, day, next_header='daily_change'):
     corp_name = ALL_TICKERS[ticker]['name']
     current_fname_day = dt.strptime(day, FMT)
     current_day = current_fname_day
@@ -581,29 +606,29 @@ def get_next_daily_change_percentage(ticker, day):
             current_day_str = current_day.strftime(FMT)
             if not current_day_str in days:
                 break
-            change = 100 * current_day_df.daily_change.loc[current_day_str] / current_day_df['1. open'].loc[current_day_str]
+            change = 100 * current_day_df[next_header].loc[current_day_str] / current_day_df['1. open'].loc[current_day_str]
             if not np.isnan(change):
                 return change, current_day_str
 
     return None, None
 
-def create_training_output(df, day):
+def create_training_output(df, day, next_header='daily_change'):
     answer_array_header = 'Next Change'
     df_data = {answer_array_header:np.array([])}
     for ind in df.index.values:
         ticker = ind.split('-')[0]
-        next_percent, _ = get_next_daily_change_percentage(ticker, day)
+        next_percent, _ = get_next_daily_change_percentage(ticker, day, next_header=next_header)
         df_data[answer_array_header] = np.append(df_data[answer_array_header], next_percent)
 
     ans_df = pd.DataFrame(df_data, index=df.index)
     return ans_df
 
-def create_training_df(days):
+def create_training_df(days, next_header='daily_change'):
     full_df = None
     for day in days:
         current_stats = MultiSymbolStats(ALL_TICKERS.keys(), day)
         current_input = current_stats.creat_indicator_dfs()
-        current_output = create_training_output(current_input, day)
+        current_output = create_training_output(current_input, day, next_header=next_header)
         current_df = current_input.join(current_output)#.reset_index(drop=True)
         if full_df is None:
             full_df = current_df
@@ -652,10 +677,10 @@ def check_score_vs_mvmt(score_date, mv_date):
     df.plot.bar()
 
 if __name__ == "__main__":
-    task = 'score_data'
+    task = 'create_training_data'
 
     if task == 'get_data':
-        tickers = ['ROSE', 'RHE', 'ARA', 'ASPN', 'TLSA', 'MRNA', 'ENVA', 'FET', 'VSLR', 'ABG', 'LAD', 'OOMA', 'PRPO', 'AKTS', 'IDN', 'PIRS', 'PVG', 'AGI', 'MAG', 'BPTH', 'MAXR', 'ZYXI', 'EIDX', 'RLGT', 'WPRT', 'SHEN']
+        tickers = list(ALL_TICKERS.keys())
         create_and_save_data(tickers)
     elif task == 'score_data':
         all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-21')
@@ -665,14 +690,14 @@ if __name__ == "__main__":
         plot_informative_lines(mvmt_ax, style='k-')
         plt.show()
     elif task == 'create_training_data':
-        train_df = create_training_df(['2019-05-05', '2019-05-07', '2019-05-08', '2019-05-10', '2019-05-11', '2019-05-12', '2019-05-13', '2019-05-15'])
-        val_df = create_training_df(['2019-05-09', '2019-05-06', '2019-05-14'])
-        test_df = create_training_df(['2019-05-19'])
-        train_df.to_csv('training_data.csv')
-        val_df.to_csv('val_data.csv')
-        test_df.to_csv('test_data.csv')
+        train_df = create_training_df(['2019-05-05', '2019-05-07', '2019-05-08', '2019-05-10', '2019-05-11', '2019-05-12', '2019-05-13', '2019-05-15'], next_header='between_day_change')
+        val_df = create_training_df(['2019-05-09', '2019-05-22', '2019-05-19'], next_header='between_day_change')
+        test_df = create_training_df(['2019-05-14'], next_header='between_day_change')
+        train_df.to_csv('between_training_data.csv')
+        val_df.to_csv('between_val_data.csv')
+        test_df.to_csv('between_test_data.csv')
     elif task == 'create_prediction_data':
-        pred_df = create_training_df(['2019-05-21'])
+        pred_df = create_training_df(['2019-05-23'], next_header='between_day_change')
         pred_df.to_csv('pred_data.csv')
     elif task == 'other':
         stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
