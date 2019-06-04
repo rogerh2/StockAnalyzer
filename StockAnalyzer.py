@@ -1,24 +1,26 @@
-from alpha_vantage.timeseries import TimeSeries
-import quandl
 import os
 import re
 import numpy as np
 import pandas as pd
+from alpha_vantage.timeseries import TimeSeries
 from datetime import datetime as dt
 from datetime import timedelta
 from newsapi import NewsApiClient
 from pytrends.request import TrendReq
 from transform_functions import functions
-from util import convert_utc_str_to_est_str
 from textblob import TextBlob as txb
 from time import sleep
 from matplotlib import pyplot as plt
+from util import convert_utc_str_to_est_str
 from util import eliminate_nans_equally
 from util import num2str
+from util import plot_informative_lines
 from constants import ALL_TICKERS
+from constants import PENNY_STOCKS
+from constants import SMALL_TIKCERS
 from constants import STOCK_DATA_PATH
 from constants import FMT
-from util import plot_informative_lines
+from constants import NN_TRAINING_DATA_PATH
 
 # --definition of global variables--
 PYTREND = TrendReq(tz=300)
@@ -261,7 +263,7 @@ class Corporation(Ticker):
 
     def save_data(self):
         self.join_data_into_dataframes()
-        self.df.to_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/' + self.df.index.values[-1] + '_' + self.ticker + '_' + self.name + '.csv')
+        self.df.to_csv(STOCK_DATA_PATH + self.df.index.values[-1] + '_' + self.ticker + '_' + self.name + '.csv')
 
 class Stats:
 
@@ -342,7 +344,11 @@ class Stats:
 
             if ('.' in data_name):
                 current_change = self.stock_data[data_name].dropna().values[-1] - self.stock_data[data_name].dropna().values[-2]
-                data_percent = 100 * current_change / self.stock_data[data_name].dropna().values[-2]
+                if 'volume' in data_name:
+                    coeff = 1
+                else:
+                    coeff = 100
+                data_percent = coeff * current_change / self.stock_data[data_name].dropna().values[-2]
                 indicators['Previous ' + data_name[3::].capitalize()] = (data_percent, corr_data.loc[data_name])
                 continue
 
@@ -391,7 +397,7 @@ class MultiSymbolStats:
     def __init__(self, tickers_list, date, folder_path=STOCK_DATA_PATH):
         self.stats = {}
         for ticker in tickers_list:
-            fname = folder_path + '/' +date + '_' + ticker + '_' + ALL_TICKERS[ticker]['name'] + '.csv'
+            fname = folder_path + date + '_' + ticker + '_' + ALL_TICKERS[ticker]['name'] + '.csv'
             file_does_not_exist = not os.path.isfile(fname)
             if file_does_not_exist:
                 continue
@@ -408,7 +414,7 @@ class MultiSymbolStats:
             give_up_counter += 1
             current_fname_day = current_fname_day + timedelta(days=1)
             current_fname_day_str = current_fname_day.strftime(FMT)
-            current_fname = STOCK_DATA_PATH + '/' + '_'.join([current_fname_day_str, ticker, corp_name]) + '.csv'
+            current_fname = STOCK_DATA_PATH + '_'.join([current_fname_day_str, ticker, corp_name]) + '.csv'
             file_exists = os.path.isfile(current_fname)
             if not file_exists:
                 continue
@@ -592,7 +598,7 @@ def get_next_daily_change_percentage(ticker, day, next_header='daily_change'):
         give_up_counter += 1
         current_fname_day = current_fname_day + timedelta(days=1)
         current_fname_day_str = current_fname_day.strftime(FMT)
-        current_fname = STOCK_DATA_PATH + '/' +  '_'.join([current_fname_day_str, ticker, corp_name]) + '.csv'
+        current_fname = STOCK_DATA_PATH +  '_'.join([current_fname_day_str, ticker, corp_name]) + '.csv'
         file_exists = os.path.isfile(current_fname)
         if not file_exists:
             continue
@@ -623,17 +629,19 @@ def create_training_output(df, day, next_header='daily_change'):
     ans_df = pd.DataFrame(df_data, index=df.index)
     return ans_df
 
-def create_training_df(days, next_header='daily_change'):
+def create_training_df(days, next_header='daily_change', tickers=ALL_TICKERS.keys()):
     full_df = None
     for day in days:
-        current_stats = MultiSymbolStats(ALL_TICKERS.keys(), day)
+        current_stats = MultiSymbolStats(tickers, day)
         current_input = current_stats.creat_indicator_dfs()
+        if current_input is None:
+            continue
         current_output = create_training_output(current_input, day, next_header=next_header)
         current_df = current_input.join(current_output)#.reset_index(drop=True)
         if full_df is None:
             full_df = current_df
         else:
-            full_df = pd.concat((full_df, current_df), ignore_index=True)
+            full_df = pd.concat((full_df, current_df))#, ignore_index=True)
 
     return full_df
 
@@ -677,11 +685,12 @@ def check_score_vs_mvmt(score_date, mv_date):
     df.plot.bar()
 
 if __name__ == "__main__":
-    task = 'create_training_data'
+    task = 'create_prediction_data'
 
     if task == 'get_data':
         tickers = list(ALL_TICKERS.keys())
         create_and_save_data(tickers)
+
     elif task == 'score_data':
         all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-21')
         news_ax, mvmt_ax = all_stats.plot_score()
@@ -689,16 +698,20 @@ if __name__ == "__main__":
         plot_informative_lines(news_ax, style='k-')
         plot_informative_lines(mvmt_ax, style='k-')
         plt.show()
+
     elif task == 'create_training_data':
-        train_df = create_training_df(['2019-05-05', '2019-05-07', '2019-05-08', '2019-05-10', '2019-05-11', '2019-05-12', '2019-05-13', '2019-05-15'], next_header='between_day_change')
-        val_df = create_training_df(['2019-05-09', '2019-05-22', '2019-05-19'], next_header='between_day_change')
-        test_df = create_training_df(['2019-05-14'], next_header='between_day_change')
-        train_df.to_csv('between_training_data.csv')
-        val_df.to_csv('between_val_data.csv')
-        test_df.to_csv('between_test_data.csv')
+        output_header = 'between_day_change'
+        train_df = create_training_df(['2019-05-07', '2019-05-15', '2019-04-26', '2019-05-20', '2019-05-08', '2019-04-27', '2019-05-22', '2019-05-30', '2019-04-23', '2019-05-10', '2019-05-18', '2019-05-27', '2019-04-28', '2019-04-24', '2019-05-19', '2019-05-16', '2019-05-04', '2019-05-28', '2019-05-12', '2019-05-13', '2019-05-01', '2019-05-23', '2019-05-09', '2019-05-31'], next_header=output_header, tickers=PENNY_STOCKS.keys())
+        val_df = create_training_df(['2019-05-02', '2019-05-03', '2019-05-21', '2019-04-25', '2019-05-14', '2019-05-06', '2019-05-11'], next_header='between_day_change', tickers=PENNY_STOCKS.keys())
+        test_df = create_training_df([ '2019-05-05', '2019-04-30', '2019-04-29', '2019-05-29'], next_header=output_header, tickers=PENNY_STOCKS.keys())
+        train_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_training_data.csv')
+        val_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_val_data.csv')
+        test_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_test_data.csv')
+
     elif task == 'create_prediction_data':
-        pred_df = create_training_df(['2019-05-23'], next_header='between_day_change')
+        pred_df = create_training_df(['2019-05-31'], next_header='daily_change', tickers=PENNY_STOCKS.keys())
         pred_df.to_csv('pred_data.csv')
+
     elif task == 'other':
         stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
         _ = stat.analyze_correlations('1. open')

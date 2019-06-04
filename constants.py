@@ -1,6 +1,7 @@
 from util import merge_dicts
 
-STOCK_DATA_PATH = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data'
+STOCK_DATA_PATH = '/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/Stock Data//'
+NN_TRAINING_DATA_PATH = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/NN Training Data//'
 FMT = "%Y-%m-%d"
 
 #--industry specific key words--
@@ -51,7 +52,11 @@ PENNY_STOCKS = { # Share price below $5.00
             'name': 'Alamos Gold'},
     'WPRT': {'key_terms':
                  ENERGY + FREIGHT,
-             'name': 'Westport Fuel Systems'}
+             'name': 'Westport Fuel Systems'},
+    'SESN': {'key_terms':
+                 HEALTH_CARE + ['cancer'],
+             'name': 'Sesen Bio'},
+
 }
 
 SMALL_CAP = { # Below $1B mkt cap
@@ -88,7 +93,7 @@ SMALL_CAP = { # Below $1B mkt cap
              'name': 'Radiant Logistics'},
     'IOTS': {'key_terms':
                  SEMICONDUCTOR,
-             'name': 'Adesto Technologies'}
+             'name': 'Adesto Technologies'},
 }
 
 MID_CAP = { # Between $1B and $10B mkt cap
@@ -119,7 +124,13 @@ MID_CAP = { # Between $1B and $10B mkt cap
              'name': 'Zynex'},
     'SHEN': {'key_terms':
                  TELECOMMUNICATIONS,
-             'name': 'Shenandoah Telecommunications Company'}
+             'name': 'Shenandoah Telecommunications Company'},
+    'SMI': {'key_terms':
+                SEMICONDUCTOR,
+            'name': 'Semiconductor Manufacturing'},
+    'FATE': {'key_terms':
+                 HEALTH_CARE + ['cancer', 'immune disease', 'genetic disorders'],
+             'name': 'Fate Therapeutics'}
 }
 
 LARGE_CAP = { # Mkt cap above $10B
@@ -136,5 +147,7 @@ LARGE_CAP = { # Mkt cap above $10B
                 ['self-storage', 'Marie Kondo', 'relocating', 'moving', 'long term storage', 'warehousing'],
             'name': 'Extra Space Storage'}
 }
+
+SMALL_TIKCERS = merge_dicts((PENNY_STOCKS, SMALL_CAP))
 
 ALL_TICKERS = merge_dicts((PENNY_STOCKS, SMALL_CAP, MID_CAP, LARGE_CAP))
