@@ -6,6 +6,9 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from datetime import datetime as dt
 from keras import models
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LeakyReLU
 from sklearn.utils import resample
 from sklearn.utils import shuffle
 
@@ -160,3 +163,16 @@ class BaseNN:
 
 
         return {prediction_names[0]:prediction, prediction_names[1]:test_output}
+
+class ClassifierNN(BaseNN):
+
+    def __init__(self, model_type=Sequential(), N=3, input_size=17, model_path=None, seed=7):
+        super(ClassifierNN, self).__init__(model_type, model_path, seed)
+        if model_path is None:
+            self.model.add(Dense(30, input_dim=input_size, activation='relu'))
+            self.model.add(LeakyReLU())
+            self.model.add(Dense(N, activation='softmax'))
+            self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    def __call__(self):
+        return self.model

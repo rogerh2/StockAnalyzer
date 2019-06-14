@@ -56,7 +56,42 @@ PENNY_STOCKS = { # Share price below $5.00
     'SESN': {'key_terms':
                  HEALTH_CARE + ['cancer'],
              'name': 'Sesen Bio'},
-
+    'RAVE': {'key_terms':
+                 ['pizza', 'restaurant franchise', 'food service', 'restaurant tipping'],
+             'name': 'Rave Restaurant Group'},
+    'CGEN': {'key_terms':
+                 HEALTH_CARE + ['immune disease', 'oncology'],
+             'name': 'Compugen'},
+    'APPS':  {'key_terms':
+                 ['mobile app', 'digital media', 'digital advertising', 'mobile user experience', 'sponsored app', 'mobile devices'],
+             'name': 'Digital Turbine'},
+    'OCUL':  {'key_terms':
+                 HEALTH_CARE + ['cataracts'],
+             'name': 'Ocular Therapeutix'},
+    'LWAY':  {'key_terms':
+                 ['kefir', 'plantiful', 'probugs', 'cups', 'skyr', 'cheese', 'probiotic'],
+             'name': 'Lifeway Foods'},
+    'PYDS':  {'key_terms':
+                 ['gift cards', 'rebate cards', 'online payment', 'credit card'],
+             'name': 'Payment Data Systems'},
+    'IMGN':  {'key_terms':
+                 HEALTH_CARE + ['oncology', 'cancer'],
+             'name': 'ImmunoGen'},
+    'UMC':  {'key_terms':
+                 SEMICONDUCTOR,
+             'name': 'United Microelectronics'},
+    'AVXL':  {'key_terms':
+                 HEALTH_CARE,
+             'name': 'Anavex'},
+    'VNTR':  {'key_terms':
+                 ['water treatment', 'titanium dioxide', 'plastics', 'paper', 'printing inks', 'wood treatments'],
+             'name': 'Venator Materials'},
+    'TMQ':  {'key_terms':
+                 MINING + ['Arctic', 'Bornite', 'trilogy', 'TMZ'],
+             'name': 'Trilogy Metals'},
+    'DRD':  {'key_terms':
+                 MINING,
+             'name': 'DRDGOLD'}
 }
 
 SMALL_CAP = { # Below $1B mkt cap

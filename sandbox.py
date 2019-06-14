@@ -1,5 +1,5 @@
 import numpy as np
-import pandas
+import pandas as pd
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LeakyReLU
@@ -56,16 +56,53 @@ def normalize_rows(df, col_list, norm_list):
 
     return df
 
+def save_pred_data_as_csv(df, xlsx_name):
+    # Create the Excel file
+    writer = pd.ExcelWriter(xlsx_name + '.xlsx', engine='xlsxwriter')
+    df.to_excel(writer, sheet_name='Sheet1')
+    workbook = writer.book
+    worksheet = writer.sheets['Sheet1']
+    # Light red fill with dark red text.
+    red_format = workbook.add_format({'bg_color': '#FFC7CE',
+                                   'font_color': '#9C0006'})
+    # Light yellow fill with dark yellow text.
+    yellow_format = workbook.add_format({'bg_color': '#FFEB9C',
+                                   'font_color': '#9C6500'})
+    # Green fill with dark green text.
+    green_format = workbook.add_format({'bg_color': '#C6EFCE',
+                                   'font_color': '#006100'})
+
+    sheet_len = str(df.shape[0] + 1)
+
+    # Wroksheet conditions
+    worksheet.conditional_format('B2:D' + sheet_len, {'type': 'data_bar'})
+    worksheet.conditional_format('E2:E' + sheet_len, {'type': '3_color_scale'})
+    worksheet.conditional_format('A2:A' + sheet_len,
+                                 {'type': 'formula',
+                                  'criteria': '=$B2>$E2',
+                                  'format': red_format
+                                  })
+    worksheet.conditional_format('A2:A' + sheet_len,
+                                 {'type': 'formula',
+                                  'criteria': '=AND($E2>$B2, $C2>$D2)',
+                                  'format': yellow_format
+                                  })
+    worksheet.conditional_format('A2:A' + sheet_len,
+                                 {'type': 'formula',
+                                  'criteria': '=AND($E2>$B2, $C2<$D2)',
+                                  'format': green_format
+                                  })
+    writer.save()
 
 
 class ClassifierNN(BaseNN):
 
-    def __init__(self, model_type=Sequential(), model_path=None, seed=7):
+    def __init__(self, model_type=Sequential(), model_path=None, seed=7, N=3):
         super(ClassifierNN, self).__init__(model_type, model_path, seed)
         if model_path is None:
             self.model.add(Dense(30, input_dim=INPUT_SIZE, activation='relu'))
             self.model.add(LeakyReLU())
-            self.model.add(Dense(3, activation='softmax'))
+            self.model.add(Dense(N, activation='softmax'))
             self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     def __call__(self):
@@ -77,13 +114,13 @@ if __name__ == "__main__":
     #TODO move to StockAnalyzer
     prefix = 'daily_change'
     if train:
-        train_dataset = pandas.read_csv(NN_TRAINING_DATA_PATH + prefix + '_training_data.csv', index_col=0).drop_duplicates(subset = "Previous Movement", keep = 'first', inplace = False)
+        train_dataset = pd.read_csv(NN_TRAINING_DATA_PATH + prefix + '_training_data.csv', index_col=0).drop_duplicates(subset ="Previous Movement", keep ='first', inplace = False)
         train_dataset = normalize_rows(train_dataset, ['Previous Movement'], [100])
 
-        val_dataset = pandas.read_csv(NN_TRAINING_DATA_PATH + prefix + '_val_data.csv', index_col=0).drop_duplicates(subset = "Previous Movement", keep = 'first', inplace = False)
+        val_dataset = pd.read_csv(NN_TRAINING_DATA_PATH + prefix + '_val_data.csv', index_col=0).drop_duplicates(subset ="Previous Movement", keep ='first', inplace = False)
         val_dataset = normalize_rows(val_dataset, ['Previous Movement'], [100])
 
-        test_dataset = pandas.read_csv(NN_TRAINING_DATA_PATH + prefix + '_test_data.csv', index_col=0)
+        test_dataset = pd.read_csv(NN_TRAINING_DATA_PATH + prefix + '_test_data.csv', index_col=0)
         test_dataset = normalize_rows(test_dataset, ['Previous Movement'], [100])
 
         X_train, Y_train = create_data_for_train_test(train_dataset)
@@ -97,13 +134,13 @@ if __name__ == "__main__":
         train_val_split = X_val.shape[0] / X_fit.shape[0]
 
         class_nn = ClassifierNN()
-        class_nn.train_model(X_fit, Y_fit, 40, batch_size=5, training_patience=200, val_split=train_val_split, file_name='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_daily_change_predictor_20190603.h5')
+        class_nn.train_model(X_fit, Y_fit, 40, batch_size=5, training_patience=200, val_split=train_val_split, file_name='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_daily_change_predictor_20190610.h5')
         test_data = class_nn.test_model(X_test, Y_test, show_plots=False)
-        df1 = pandas.DataFrame(test_data['Predicted'], index=test_dataset.index.values)
-        df2 = pandas.DataFrame(test_data['Measured'], index=test_dataset.index.values)
-        df = pandas.concat((df1, df2), axis=1)
+        df1 = pd.DataFrame(test_data['Predicted'], index=test_dataset.index.values)
+        df2 = pd.DataFrame(test_data['Measured'], index=test_dataset.index.values)
+        df = pd.concat((df1, df2), axis=1)
         df.index = test_dataset.index.values
-        df.to_csv(prefix + '_test_results.csv')
+        save_pred_data_as_csv(df, prefix + '_test_results')
 
         # estimator = KerasClassifier(build_fn=class_nn, epochs=200, batch_size=5, verbose=2)
         # kfold = KFold(n_splits=10, shuffle=True, random_state=class_nn.seed)
@@ -111,10 +148,12 @@ if __name__ == "__main__":
         # results = cross_val_score(estimator, X_fit, Y_fit, cv=kfold)
         # print("Baseline: %.2f%% (%.2f%%)" % (results.mean()*100, results.std()*100))
     else:
-        class_nn = ClassifierNN(model_path='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_daily_change_predictor_20190531.h5')
-        dataset = pandas.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/pred_data.csv', index_col=0)
+        class_nn = ClassifierNN(model_path='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_daily_change_predictor_20190610.h5')
+        dataset = pd.read_csv('/Users/rjh2nd/PycharmProjects/StockAnalyzer/pred_data.csv', index_col=0)
         dataset = normalize_rows(dataset, ['Previous Movement'], [100])
         X = dataset.values[:, 0:INPUT_SIZE]
         prediction = class_nn.model.predict(X)
-        pandas.DataFrame(data=prediction, columns=['negative', 'weak positive', 'strong positive'], index=dataset.index.values).to_csv('/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/data/20190603/Predictions_20190603.csv', index=True)
+        pred_df = pd.DataFrame(data=prediction, columns=['negative', 'weak positive', 'strong positive'], index=dataset.index.values)
+        pred_df['total positive'] = pred_df['weak positive'].values + pred_df['strong positive'].values
+        save_pred_data_as_csv(pred_df, '/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/data/20190612/Predictions_20190612')
 

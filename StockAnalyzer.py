@@ -15,15 +15,16 @@ from util import convert_utc_str_to_est_str
 from util import eliminate_nans_equally
 from util import num2str
 from util import plot_informative_lines
+from util import ClassifierNN
 from constants import ALL_TICKERS
 from constants import PENNY_STOCKS
-from constants import SMALL_TIKCERS
 from constants import STOCK_DATA_PATH
 from constants import FMT
 from constants import NN_TRAINING_DATA_PATH
 
 # --definition of global variables--
 PYTREND = TrendReq(tz=300)
+INPUT_SIZE=17
 #TODO put api keys in a file that is automatically read when the script is executed
 api_keys_file_path = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/APIKeys.txt'
 api_keys_file_exists = os.path.isfile(api_keys_file_path)
@@ -684,15 +685,66 @@ def check_score_vs_mvmt(score_date, mv_date):
     df = pd.DataFrame(data=data, index=inds)
     df.plot.bar()
 
+def normalize_rows(df, col_list, norm_list):
+    for col, norm in zip(col_list, norm_list):
+        if type(norm) == str:
+            df[col] = df[col].values / df[norm]
+        else:
+            df[col] = df[col] / norm
+
+    return df
+
+def save_pred_data_as_csv(df, folder_path, xlsx_name):
+    # Create the Excel file
+    if not os.path.exists(folder_path):
+        os.mkdir(folder_path)
+
+    writer = pd.ExcelWriter(folder_path + xlsx_name + '.xlsx', engine='xlsxwriter')
+    df.to_excel(writer, sheet_name='Sheet1')
+    workbook = writer.book
+    worksheet = writer.sheets['Sheet1']
+    # Light red fill with dark red text.
+    red_format = workbook.add_format({'bg_color': '#FFC7CE',
+                                   'font_color': '#9C0006'})
+    # Light yellow fill with dark yellow text.
+    yellow_format = workbook.add_format({'bg_color': '#FFEB9C',
+                                   'font_color': '#9C6500'})
+    # Green fill with dark green text.
+    green_format = workbook.add_format({'bg_color': '#C6EFCE',
+                                   'font_color': '#006100'})
+
+    sheet_len = str(df.shape[0] + 1)
+
+    # Wroksheet conditions
+    worksheet.conditional_format('B2:D' + sheet_len, {'type': 'data_bar'})
+    worksheet.conditional_format('E2:E' + sheet_len, {'type': '3_color_scale'})
+    worksheet.conditional_format('A2:A' + sheet_len,
+                                 {'type': 'formula',
+                                  'criteria': '=$B2>$E2',
+                                  'format': red_format
+                                  })
+    worksheet.conditional_format('A2:A' + sheet_len,
+                                 {'type': 'formula',
+                                  'criteria': '=AND($E2>$B2, $C2>$D2)',
+                                  'format': yellow_format
+                                  })
+    worksheet.conditional_format('A2:A' + sheet_len,
+                                 {'type': 'formula',
+                                  'criteria': '=AND($E2>$B2, $C2<$D2)',
+                                  'format': green_format
+                                  })
+    writer.save()
+
 if __name__ == "__main__":
-    task = 'create_prediction_data'
+    task = 'predict'
+    day = '2019-06-13'
 
     if task == 'get_data':
         tickers = list(ALL_TICKERS.keys())
         create_and_save_data(tickers)
 
     elif task == 'score_data':
-        all_stats = MultiSymbolStats(ALL_TICKERS.keys(), '2019-05-21')
+        all_stats = MultiSymbolStats(ALL_TICKERS.keys(), day)
         news_ax, mvmt_ax = all_stats.plot_score()
         all_stats.print_indicators_for_many_symbols()
         plot_informative_lines(news_ax, style='k-')
@@ -703,14 +755,25 @@ if __name__ == "__main__":
         output_header = 'between_day_change'
         train_df = create_training_df(['2019-05-07', '2019-05-15', '2019-04-26', '2019-05-20', '2019-05-08', '2019-04-27', '2019-05-22', '2019-05-30', '2019-04-23', '2019-05-10', '2019-05-18', '2019-05-27', '2019-04-28', '2019-04-24', '2019-05-19', '2019-05-16', '2019-05-04', '2019-05-28', '2019-05-12', '2019-05-13', '2019-05-01', '2019-05-23', '2019-05-09', '2019-05-31'], next_header=output_header, tickers=PENNY_STOCKS.keys())
         val_df = create_training_df(['2019-05-02', '2019-05-03', '2019-05-21', '2019-04-25', '2019-05-14', '2019-05-06', '2019-05-11'], next_header='between_day_change', tickers=PENNY_STOCKS.keys())
-        test_df = create_training_df([ '2019-05-05', '2019-04-30', '2019-04-29', '2019-05-29'], next_header=output_header, tickers=PENNY_STOCKS.keys())
+        test_df = create_training_df([ '2019-05-05', '2019-04-30', '2019-04-29', '2019-05-29', '2019-06-08', '2019-06-06', '2019-06-04'], next_header=output_header, tickers=PENNY_STOCKS.keys())
         train_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_training_data.csv')
         val_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_val_data.csv')
         test_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_test_data.csv')
 
-    elif task == 'create_prediction_data':
-        pred_df = create_training_df(['2019-05-31'], next_header='daily_change', tickers=PENNY_STOCKS.keys())
-        pred_df.to_csv('pred_data.csv')
+    elif task == 'predict':
+        # create dataset for predicting
+        dataset = create_training_df([day], next_header='daily_change', tickers=PENNY_STOCKS.keys())
+        dataset = normalize_rows(dataset, ['Previous Movement'], [100])
+        X = dataset.values[:, 0:INPUT_SIZE]
+        # predict
+        class_nn = ClassifierNN( model_path='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_daily_change_predictor_20190610.h5')
+        prediction = class_nn.model.predict(X)
+
+        # save data
+        pred_df = pd.DataFrame(data=prediction, columns=['negative', 'weak positive', 'strong positive'],
+                               index=dataset.index.values)
+        pred_df['total positive'] = pred_df['weak positive'].values + pred_df['strong positive'].values
+        save_pred_data_as_csv(pred_df,'/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/data/' + day.replace('-', '') + '/', 'Predictions_' + day.replace('-', ''))
 
     elif task == 'other':
         stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
