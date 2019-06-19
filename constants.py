@@ -2,13 +2,16 @@ from util import merge_dicts
 
 STOCK_DATA_PATH = '/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/Stock Data//'
 NN_TRAINING_DATA_PATH = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/NN Training Data//'
+MODEL_PATH = '/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/data//'
 FMT = "%Y-%m-%d"
 
 #--industry specific key words--
 
-ENERGY = ['drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling', 'solar', 'clean energy']
+ENERGY = ['energy', 'drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling', 'solar', 'clean energy']
 
 HEALTH_CARE = ['healthcare', 'therapeutics', 'biopharmaceutical', 'pharmaceutical', 'rare diseases', 'hospitals', 'healthcare suppliers', 'biotech', 'AI and medicine']
+
+CANCER = HEALTH_CARE + ['gene therapy', 'cancer', 'oncology']
 
 MINING = ['minerals', 'precious metals', 'gold', 'mining', 'silver']
 
@@ -22,15 +25,15 @@ TELECOMMUNICATIONS = ['telecommunications', 'internet', 'cyber security', 'telep
 
 #--ticker data--
 
-PENNY_STOCKS = { # Share price below $5.00
-    'NAO': {'key_terms':  # noticesed trends with news polarity
-                ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
-            'name': 'Nordic American Offshore'},
-    'ROSE': {'key_terms':  # Notice strong trends with drilling googletrends and weak trends with news polarity
+PENNY_STOCKS = { # Share price below $6.00
+    # 'NAO': {'key_terms':  # Renamed to PSV
+    #             ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
+    #         'name': 'Nordic American Offshore'},
+    'ROSE': {'key_terms':
                  ENERGY,
              'name': 'Rosehill Resources'},
     'RHE': {'key_terms':
-                ['AdCare Health Systems', 'healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis', 'Northwest Property Holdings', 'CP Nursing', 'ADK Georgia', 'Attalla Nursing'],
+                ['healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis'],
             'name': 'Regional Health'},
     'ASPN': {'key_terms':
                  ['aerogel', 'insulation', 'energy', 'pyrogel', 'cryogel'],
@@ -45,7 +48,7 @@ PENNY_STOCKS = { # Share price below $5.00
                 ['identity theft', 'identity fraud', 'credit card fraud', 'credit card', 'drivers license'],
             'name': 'Intellicheck'},
     'PIRS': {'key_terms':
-                 ['biopharmaceutical', 'pharmaceutical', 'cancer', 'immune disease', 'oncology', 'anticalin', 'rare diseases', 'gene therapy', 'biotech'],
+                 CANCER + ['immune disease', 'anticalin', 'rare diseases'],
              'name': 'Pieris Pharmaceuticals'},
     'AGI': {'key_terms':
                 MINING,
@@ -54,13 +57,13 @@ PENNY_STOCKS = { # Share price below $5.00
                  ENERGY + FREIGHT,
              'name': 'Westport Fuel Systems'},
     'SESN': {'key_terms':
-                 HEALTH_CARE + ['cancer'],
+                 CANCER,
              'name': 'Sesen Bio'},
     'RAVE': {'key_terms':
                  ['pizza', 'restaurant franchise', 'food service', 'restaurant tipping'],
              'name': 'Rave Restaurant Group'},
     'CGEN': {'key_terms':
-                 HEALTH_CARE + ['immune disease', 'oncology'],
+                 CANCER + ['immune disease'],
              'name': 'Compugen'},
     'APPS':  {'key_terms':
                  ['mobile app', 'digital media', 'digital advertising', 'mobile user experience', 'sponsored app', 'mobile devices'],
@@ -75,7 +78,7 @@ PENNY_STOCKS = { # Share price below $5.00
                  ['gift cards', 'rebate cards', 'online payment', 'credit card'],
              'name': 'Payment Data Systems'},
     'IMGN':  {'key_terms':
-                 HEALTH_CARE + ['oncology', 'cancer'],
+                 CANCER,
              'name': 'ImmunoGen'},
     'UMC':  {'key_terms':
                  SEMICONDUCTOR,
@@ -86,12 +89,12 @@ PENNY_STOCKS = { # Share price below $5.00
     'VNTR':  {'key_terms':
                  ['water treatment', 'titanium dioxide', 'plastics', 'paper', 'printing inks', 'wood treatments'],
              'name': 'Venator Materials'},
-    'TMQ':  {'key_terms':
-                 MINING + ['Arctic', 'Bornite', 'trilogy', 'TMZ'],
-             'name': 'Trilogy Metals'},
     'DRD':  {'key_terms':
                  MINING,
-             'name': 'DRDGOLD'}
+             'name': 'DRDGOLD'},
+    'TMQ':  {'key_terms':
+                 MINING + ['Arctic', 'Bornite', 'trilogy', 'TMZ'],
+             'name': 'Trilogy Metals'}
 }
 
 SMALL_CAP = { # Below $1B mkt cap
@@ -186,3 +189,10 @@ LARGE_CAP = { # Mkt cap above $10B
 SMALL_TIKCERS = merge_dicts((PENNY_STOCKS, SMALL_CAP))
 
 ALL_TICKERS = merge_dicts((PENNY_STOCKS, SMALL_CAP, MID_CAP, LARGE_CAP))
+
+NEXT_TICKERS = {}
+for tick in ALL_TICKERS:
+    if tick in ['ROSE', 'RHE', 'ASPN', 'FET', 'OMI', 'IDN', 'PIRS', 'AGI', 'WPRT', 'SESN', 'RAVE', 'CGEN']:
+        continue
+    else:
+        NEXT_TICKERS[tick] = ALL_TICKERS[tick]

@@ -16,11 +16,14 @@ from util import eliminate_nans_equally
 from util import num2str
 from util import plot_informative_lines
 from util import ClassifierNN
+from util import progress_printer
 from constants import ALL_TICKERS
 from constants import PENNY_STOCKS
 from constants import STOCK_DATA_PATH
+from constants import NEXT_TICKERS
 from constants import FMT
 from constants import NN_TRAINING_DATA_PATH
+from constants import MODEL_PATH
 
 # --definition of global variables--
 PYTREND = TrendReq(tz=300)
@@ -630,9 +633,10 @@ def create_training_output(df, day, next_header='daily_change'):
     ans_df = pd.DataFrame(df_data, index=df.index)
     return ans_df
 
-def create_training_df(days, next_header='daily_change', tickers=ALL_TICKERS.keys()):
+def create_training_df(days, task, next_header='daily_change', tickers=ALL_TICKERS.keys()):
     full_df = None
-    for day in days:
+    for day, i in zip(days, range(0, len(days))):
+        progress_printer(len(days), i, tsk=task)
         current_stats = MultiSymbolStats(tickers, day)
         current_input = current_stats.creat_indicator_dfs()
         if current_input is None:
@@ -737,10 +741,10 @@ def save_pred_data_as_csv(df, folder_path, xlsx_name):
 
 if __name__ == "__main__":
     task = 'predict'
-    day = '2019-06-13'
+    day = '2019-06-18'
 
     if task == 'get_data':
-        tickers = list(ALL_TICKERS.keys())
+        tickers = list(PENNY_STOCKS.keys())#list(ALL_TICKERS.keys())
         create_and_save_data(tickers)
 
     elif task == 'score_data':
@@ -752,28 +756,29 @@ if __name__ == "__main__":
         plt.show()
 
     elif task == 'create_training_data':
-        output_header = 'between_day_change'
-        train_df = create_training_df(['2019-05-07', '2019-05-15', '2019-04-26', '2019-05-20', '2019-05-08', '2019-04-27', '2019-05-22', '2019-05-30', '2019-04-23', '2019-05-10', '2019-05-18', '2019-05-27', '2019-04-28', '2019-04-24', '2019-05-19', '2019-05-16', '2019-05-04', '2019-05-28', '2019-05-12', '2019-05-13', '2019-05-01', '2019-05-23', '2019-05-09', '2019-05-31'], next_header=output_header, tickers=PENNY_STOCKS.keys())
-        val_df = create_training_df(['2019-05-02', '2019-05-03', '2019-05-21', '2019-04-25', '2019-05-14', '2019-05-06', '2019-05-11'], next_header='between_day_change', tickers=PENNY_STOCKS.keys())
-        test_df = create_training_df([ '2019-05-05', '2019-04-30', '2019-04-29', '2019-05-29', '2019-06-08', '2019-06-06', '2019-06-04'], next_header=output_header, tickers=PENNY_STOCKS.keys())
+        output_header = 'daily_change'
+        train_df = create_training_df(['2019-06-04', '2019-06-08', '2019-05-01', '2019-04-25', '2019-05-21', '2019-04-29', '2019-05-23', '2019-06-03', '2019-05-09', '2019-04-30', '2019-05-15', '2019-05-13', '2019-05-27', '2019-04-24', '2019-05-29', '2019-05-07', '2019-06-02', '2019-06-07', '2019-05-14', '2019-06-05', '2019-05-08', '2019-04-27', '2019-05-03', '2019-05-04', '2019-06-10', '2019-05-11', '2019-06-14', '2019-06-13', '2019-05-22', '2019-04-28', '2019-06-11', '2019-06-01', '2019-06-12', '2019-05-28', '2019-05-30'], 'creating training data', next_header=output_header, tickers=PENNY_STOCKS.keys())
+        val_df = create_training_df(['2019-05-19', '2019-06-06', '2019-04-26', '2019-05-10', '2019-05-20', '2019-05-12', '2019-06-09', '2019-05-16', '2019-05-18'], 'creating validation data', next_header='between_day_change', tickers=PENNY_STOCKS.keys())
+        test_df = create_training_df(['2019-05-31', '2019-05-06', '2019-05-05', '2019-05-02', '2019-04-23'], 'creating test data', next_header=output_header, tickers=PENNY_STOCKS.keys())
         train_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_training_data.csv')
         val_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_val_data.csv')
         test_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_test_data.csv')
 
     elif task == 'predict':
         # create dataset for predicting
-        dataset = create_training_df([day], next_header='daily_change', tickers=PENNY_STOCKS.keys())
+        dataset = create_training_df([day], 'creating prediction data', next_header='daily_change', tickers=PENNY_STOCKS.keys())
         dataset = normalize_rows(dataset, ['Previous Movement'], [100])
         X = dataset.values[:, 0:INPUT_SIZE]
         # predict
-        class_nn = ClassifierNN( model_path='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_daily_change_predictor_20190610.h5')
+        model_name = 'stock_daily_change_predictor_20190610.h5'
+        class_nn = ClassifierNN( model_path=MODEL_PATH + model_name)
         prediction = class_nn.model.predict(X)
 
         # save data
         pred_df = pd.DataFrame(data=prediction, columns=['negative', 'weak positive', 'strong positive'],
                                index=dataset.index.values)
         pred_df['total positive'] = pred_df['weak positive'].values + pred_df['strong positive'].values
-        save_pred_data_as_csv(pred_df,'/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/data/' + day.replace('-', '') + '/', 'Predictions_' + day.replace('-', ''))
+        save_pred_data_as_csv(pred_df,MODEL_PATH + day.replace('-', '') + '/', 'Predictions_' + day.replace('-', '') + '_' + model_name[0:-3])
 
     elif task == 'other':
         stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')

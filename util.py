@@ -63,6 +63,8 @@ def convert_utc_str_to_timestamp(naive_datetime_str, from_fmt):
     ts = utc_date.timestamp()
     return ts
 
+# TODO create function to get current day in format
+
 def eliminate_nans_equally(arr_list):
     arr_len = len(arr_list)
 

@@ -14,6 +14,7 @@ from util import BaseNN
 from util import balance_classes
 from sklearn.utils import resample
 from constants import NN_TRAINING_DATA_PATH
+from constants import MODEL_PATH
 
 # dataset = pandas.read_csv('/Users/rjh2nd/Dropbox (Personal)/Programing/databases/iris.data').values
 # # encode class values as integers
@@ -110,7 +111,7 @@ class ClassifierNN(BaseNN):
 
 
 if __name__ == "__main__":
-    train = False
+    train = True
     #TODO move to StockAnalyzer
     prefix = 'daily_change'
     if train:
@@ -134,9 +135,11 @@ if __name__ == "__main__":
         train_val_split = X_val.shape[0] / X_fit.shape[0]
 
         class_nn = ClassifierNN()
-        class_nn.train_model(X_fit, Y_fit, 40, batch_size=5, training_patience=200, val_split=train_val_split, file_name='/Users/rjh2nd/PycharmProjects/StockAnalyzer/models/stock_daily_change_predictor_20190610.h5')
+        class_nn.train_model(X_fit, Y_fit, 40, batch_size=5, training_patience=200, val_split=train_val_split, file_name=MODEL_PATH + 'stock_daily_change_predictor_20190616.h5')
         test_data = class_nn.test_model(X_test, Y_test, show_plots=False)
         df1 = pd.DataFrame(test_data['Predicted'], index=test_dataset.index.values)
+        pos_comb = df1[1].values + df1[2].values
+        df1['pos_comb'] = pos_comb
         df2 = pd.DataFrame(test_data['Measured'], index=test_dataset.index.values)
         df = pd.concat((df1, df2), axis=1)
         df.index = test_dataset.index.values
