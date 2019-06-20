@@ -1,8 +1,9 @@
 from util import merge_dicts
 
 STOCK_DATA_PATH = '/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/Stock Data//'
+DATA_PATH = '/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/data//'
 NN_TRAINING_DATA_PATH = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/NN Training Data//'
-MODEL_PATH = '/Users/rjh2nd/Dropbox (Personal)/StockAnalyzer/data//'
+MODEL_PATH = '/Users/rjh2nd/PycharmProjects/StockAnalyzer/models//'
 FMT = "%Y-%m-%d"
 
 #--industry specific key words--
@@ -21,7 +22,7 @@ SEMICONDUCTOR = ['semiconductor', 'computer', 'Apple', 'Intel', 'microprocessor'
 
 FREIGHT = ['transportation', 'logistics', 'shipping', 'railroad', 'freight', 'long term storage', 'warehousing']
 
-TELECOMMUNICATIONS = ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service']
+TELECOMMUNICATIONS = ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service', 'mobile']
 
 #--ticker data--
 
@@ -89,12 +90,18 @@ PENNY_STOCKS = { # Share price below $6.00
     'VNTR':  {'key_terms':
                  ['water treatment', 'titanium dioxide', 'plastics', 'paper', 'printing inks', 'wood treatments'],
              'name': 'Venator Materials'},
-    'DRD':  {'key_terms':
-                 MINING,
-             'name': 'DRDGOLD'},
     'TMQ':  {'key_terms':
                  MINING + ['Arctic', 'Bornite', 'trilogy', 'TMZ'],
-             'name': 'Trilogy Metals'}
+             'name': 'Trilogy Metals'},
+    'ATAI':  {'key_terms':
+                 ['education', 'China', 'education technologies', 'online education'],
+             'name': 'ATA'},
+    'SVM':  {'key_terms':
+                 MINING,
+             'name': 'Silvercorp Metals'},
+    'VEON':  {'key_terms':
+                 TELECOMMUNICATIONS,
+             'name': 'Veon'}
 }
 
 SMALL_CAP = { # Below $1B mkt cap

@@ -20,15 +20,15 @@ if create_new_files:
 
         old_data = pd.read_csv(STOCK_DATA_PATH + file, index_col=0)
         num_trading_days = len(old_data['1. open'].dropna().values)
-        if (num_trading_days > 99) and ((not np.isnan(old_data['1. open'].values[-1])) or (day == '2019-06-12')) and (not new_file_name in all_files):
+        if (num_trading_days > 99) and ((not np.isnan(old_data['1. open'].values[-1])) or (day == '2019-06-15')) and (not new_file_name in all_files):
             new_data = old_data.iloc[0:-1, ::]
             new_data.to_csv(STOCK_DATA_PATH + new_file_name)
             print('Creating new file: ' + new_file_name)
 else:
     # Create lists as input to create training/validation/and test data
     all_days = list(set([file[0:10] for file in all_files]))
-    num_test_files = 5
-    traning_len = int(9 * (len(all_days)-num_test_files)/10)
+    num_test_files = 7
+    traning_len = int(8 * (len(all_days)-num_test_files)/10)
     print('training: ' + str(all_days[0:traning_len]))
     print('validation: ' + str(all_days[traning_len:-num_test_files]))
     print('test: ' + str(all_days[-num_test_files::]))

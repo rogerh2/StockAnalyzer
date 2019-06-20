@@ -24,6 +24,7 @@ from constants import NEXT_TICKERS
 from constants import FMT
 from constants import NN_TRAINING_DATA_PATH
 from constants import MODEL_PATH
+from constants import DATA_PATH
 
 # --definition of global variables--
 PYTREND = TrendReq(tz=300)
@@ -741,7 +742,7 @@ def save_pred_data_as_csv(df, folder_path, xlsx_name):
 
 if __name__ == "__main__":
     task = 'predict'
-    day = '2019-06-18'
+    day = '2019-06-19'
 
     if task == 'get_data':
         tickers = list(PENNY_STOCKS.keys())#list(ALL_TICKERS.keys())
@@ -778,7 +779,7 @@ if __name__ == "__main__":
         pred_df = pd.DataFrame(data=prediction, columns=['negative', 'weak positive', 'strong positive'],
                                index=dataset.index.values)
         pred_df['total positive'] = pred_df['weak positive'].values + pred_df['strong positive'].values
-        save_pred_data_as_csv(pred_df,MODEL_PATH + day.replace('-', '') + '/', 'Predictions_' + day.replace('-', '') + '_' + model_name[0:-3])
+        save_pred_data_as_csv(pred_df,DATA_PATH + day.replace('-', '') + '/', 'Predictions_' + day.replace('-', '') + '_' + model_name[0:-3])
 
     elif task == 'other':
         stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
