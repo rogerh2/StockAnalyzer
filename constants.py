@@ -14,7 +14,7 @@ HEALTH_CARE = ['healthcare', 'therapeutics', 'biopharmaceutical', 'pharmaceutica
 
 CANCER = HEALTH_CARE + ['gene therapy', 'cancer', 'oncology']
 
-MINING = ['minerals', 'precious metals', 'gold', 'mining', 'silver']
+MINING = ['minerals', 'precious metals', 'gold', 'mining', 'silver', 'steel']
 
 AUTOMOTIVE = ['automotive', 'auto dealerships', 'cars', 'Tesla', 'used cars', 'new cars']
 
@@ -23,6 +23,8 @@ SEMICONDUCTOR = ['semiconductor', 'computer', 'Apple', 'Intel', 'microprocessor'
 FREIGHT = ['transportation', 'logistics', 'shipping', 'railroad', 'freight', 'long term storage', 'warehousing']
 
 TELECOMMUNICATIONS = ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service', 'mobile']
+
+SENIOR_LIVING = ['senior living', 'assisted living', 'memory care', "Alzheimer's", "dementia"]
 
 #--ticker data--
 
@@ -34,7 +36,7 @@ PENNY_STOCKS = { # Share price below $6.00
                  ENERGY,
              'name': 'Rosehill Resources'},
     'RHE': {'key_terms':
-                ['healthcare', 'senior living', 'healthcare real estate', 'real estate', 'dialysis'],
+                SENIOR_LIVING + ['healthcare', 'healthcare real estate', 'real estate', 'dialysis'],
             'name': 'Regional Health'},
     'ASPN': {'key_terms':
                  ['aerogel', 'insulation', 'energy', 'pyrogel', 'cryogel'],
@@ -60,9 +62,6 @@ PENNY_STOCKS = { # Share price below $6.00
     'SESN': {'key_terms':
                  CANCER,
              'name': 'Sesen Bio'},
-    'RAVE': {'key_terms':
-                 ['pizza', 'restaurant franchise', 'food service', 'restaurant tipping'],
-             'name': 'Rave Restaurant Group'},
     'CGEN': {'key_terms':
                  CANCER + ['immune disease'],
              'name': 'Compugen'},
@@ -96,12 +95,21 @@ PENNY_STOCKS = { # Share price below $6.00
     'ATAI':  {'key_terms':
                  ['education', 'China', 'education technologies', 'online education'],
              'name': 'ATA'},
-    'SVM':  {'key_terms':
-                 MINING,
-             'name': 'Silvercorp Metals'},
     'VEON':  {'key_terms':
                  TELECOMMUNICATIONS,
-             'name': 'Veon'}
+             'name': 'Veon'},
+    'RAVE': {'key_terms':
+                 ['pizza', 'restaurant franchise', 'food service', 'restaurant tipping'],
+             'name': 'Rave Restaurant Group'},
+    'ASC': {'key_terms':
+                 FREIGHT,
+             'name': 'Ardmore Shipping'},
+    'CSU': {'key_terms':
+                 SENIOR_LIVING,
+             'name': 'Capital Senior Living'},
+    'BWEN': {'key_terms':
+                 ENERGY + MINING,
+             'name': 'Broadwind Energy'}
 }
 
 SMALL_CAP = { # Below $1B mkt cap
@@ -139,6 +147,9 @@ SMALL_CAP = { # Below $1B mkt cap
     'IOTS': {'key_terms':
                  SEMICONDUCTOR,
              'name': 'Adesto Technologies'},
+    'CRD.A':  {'key_terms':
+                 ['insurance', 'claims management solutions', 'corporate insurance plan', 'self-insured entities'],
+             'name': 'Crawford & Co'}
 }
 
 MID_CAP = { # Between $1B and $10B mkt cap

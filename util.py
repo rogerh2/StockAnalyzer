@@ -107,6 +107,9 @@ def merge_dicts(dicts):
 
     return super_dict
 
+def get_current_date():
+    current_date = dt.today().strftime('%Y-%m-%d')
+    return current_date
 
 class BaseNN:
     # This class is meant to serve as a parent class to neural net based machine learning classes

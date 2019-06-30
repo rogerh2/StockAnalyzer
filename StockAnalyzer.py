@@ -17,6 +17,7 @@ from util import num2str
 from util import plot_informative_lines
 from util import ClassifierNN
 from util import progress_printer
+from util import get_current_date
 from constants import ALL_TICKERS
 from constants import PENNY_STOCKS
 from constants import STOCK_DATA_PATH
@@ -741,8 +742,18 @@ def save_pred_data_as_csv(df, folder_path, xlsx_name):
     writer.save()
 
 if __name__ == "__main__":
-    task = 'predict'
-    day = '2019-06-19'
+    valid_tasks = ['get_data', 'score_data', 'create_training_data', 'predict', 'other']
+    task = input('available tasks: ' + '"' + '", "'.join(valid_tasks) + '"\nwhat task would you like to perform? ')
+    if task not in valid_tasks:
+        raise ValueError(task + ' is not a valid entry')
+
+    if task == 'get_data':
+        day = None
+    else:
+        day = input('\nPlease enter the date in YYYY-MM-DD format. For the current date just press enter.\nWhich date would you like to analyze? ')
+        if len(day) == 0:
+            day = get_current_date()
+            print(day)
 
     if task == 'get_data':
         tickers = list(PENNY_STOCKS.keys())#list(ALL_TICKERS.keys())
