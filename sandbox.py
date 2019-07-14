@@ -12,6 +12,7 @@ from sklearn.utils import shuffle
 from sklearn.pipeline import Pipeline
 from util import BaseNN
 from util import balance_classes
+from util import get_current_date
 from sklearn.utils import resample
 from constants import NN_TRAINING_DATA_PATH
 from constants import MODEL_PATH
@@ -33,8 +34,8 @@ def create_data_for_train_test(data):
     X = X[shuffled_nan_mask, :]
     Y = shuffle(dataset[:, (dataset.shape[1]-1)], random_state=2)[shuffled_nan_mask]
     neg_y_mask = Y < 0
-    low_y_mask = (Y > 0) * (Y < 1)
-    hi_y_mask = (Y > 1)
+    low_y_mask = (Y > 0) * (Y < 5)
+    hi_y_mask = (Y > 5)
 
     Y_unbalanced = np.hstack((neg_y_mask.reshape(len(Y), 1), low_y_mask.reshape(len(Y), 1), hi_y_mask.reshape(len(Y), 1)))
     hi_balance_mask = hi_y_mask
@@ -98,12 +99,13 @@ def save_pred_data_as_csv(df, xlsx_name):
 
 class ClassifierNN(BaseNN):
 
-    def __init__(self, model_type=Sequential(), model_path=None, seed=7, N=3):
+    def __init__(self, model_type=Sequential(), model_path=None, seed=7, number_of_classes=3):
+        # N is the number
         super(ClassifierNN, self).__init__(model_type, model_path, seed)
         if model_path is None:
             self.model.add(Dense(30, input_dim=INPUT_SIZE, activation='relu'))
             self.model.add(LeakyReLU())
-            self.model.add(Dense(N, activation='softmax'))
+            self.model.add(Dense(number_of_classes, activation='softmax'))
             self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
     def __call__(self):
@@ -135,7 +137,7 @@ if __name__ == "__main__":
         train_val_split = X_val.shape[0] / X_fit.shape[0]
 
         class_nn = ClassifierNN()
-        class_nn.train_model(X_fit, Y_fit, 40, batch_size=5, training_patience=200, val_split=train_val_split, file_name=MODEL_PATH + 'stock_daily_change_predictor_20190616.h5')
+        class_nn.train_model(X_fit, Y_fit, 30, batch_size=5, training_patience=200, val_split=train_val_split, file_name=MODEL_PATH + 'stock_daily_change_predictor_' + get_current_date() + '.h5')
         test_data = class_nn.test_model(X_test, Y_test, show_plots=False)
         df1 = pd.DataFrame(test_data['Predicted'], index=test_dataset.index.values)
         pos_comb = df1[1].values + df1[2].values
@@ -143,7 +145,7 @@ if __name__ == "__main__":
         df2 = pd.DataFrame(test_data['Measured'], index=test_dataset.index.values)
         df = pd.concat((df1, df2), axis=1)
         df.index = test_dataset.index.values
-        save_pred_data_as_csv(df, prefix + '_test_results')
+        save_pred_data_as_csv(df, prefix + '_test_results_100')
 
         # estimator = KerasClassifier(build_fn=class_nn, epochs=200, batch_size=5, verbose=2)
         # kfold = KFold(n_splits=10, shuffle=True, random_state=class_nn.seed)

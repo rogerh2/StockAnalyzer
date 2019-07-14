@@ -8,30 +8,34 @@ FMT = "%Y-%m-%d"
 
 #--industry specific key words--
 
-ENERGY = ['energy', 'drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling', 'solar', 'clean energy']
+ENERGY = ['energy', 'drilling', 'oil', 'natural gas', 'petroleum', 'offshore drilling', 'solar', 'clean energy', 'emissions', 'nuclear power']
 
-HEALTH_CARE = ['healthcare', 'therapeutics', 'biopharmaceutical', 'pharmaceutical', 'rare diseases', 'hospitals', 'healthcare suppliers', 'biotech', 'AI and medicine']
+BIOTECH = ['healthcare', 'therapeutics', 'biopharmaceutical', 'pharmaceutical', 'rare diseases', 'hospitals', 'healthcare suppliers', 'biotech', 'AI and medicine', 'antibiotics']
 
-CANCER = HEALTH_CARE + ['gene therapy', 'cancer', 'oncology']
+CANCER = BIOTECH + ['gene therapy', 'cancer', 'oncology']
 
-MINING = ['minerals', 'precious metals', 'gold', 'mining', 'silver', 'steel']
+MINING = ['minerals', 'precious metals', 'gold', 'mining', 'silver', 'steel', 'lead', 'zinc']
 
-AUTOMOTIVE = ['automotive', 'auto dealerships', 'cars', 'Tesla', 'used cars', 'new cars']
+AUTOMOTIVE = ['automotive', 'auto dealerships', 'cars', 'Tesla', 'used cars', 'new cars', 'electric vehicles', 'sustainable transportation']
 
-SEMICONDUCTOR = ['semiconductor', 'computer', 'Apple', 'Intel', 'microprocessor', 'NVIDIA']
+SEMICONDUCTOR = ['semiconductor', 'computer', 'Apple', 'Intel', 'microprocessor', 'NVIDIA', 'integrated circuits', 'consumer electronics']
 
-FREIGHT = ['transportation', 'logistics', 'shipping', 'railroad', 'freight', 'long term storage', 'warehousing']
+FREIGHT = ['transportation', 'logistics', 'shipping', 'railroad', 'freight', 'long term storage', 'warehousing', 'tanker']
 
-TELECOMMUNICATIONS = ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service', 'mobile']
+TELECOMMUNICATIONS = ['telecommunications', 'internet', 'cyber security', 'telephone', 'telephone service', 'mobile', 'broadband networks', 'ethernet']
 
 SENIOR_LIVING = ['senior living', 'assisted living', 'memory care', "Alzheimer's", "dementia"]
+
+MANUFACTURING = ['steel', 'machined parts', 'OEMs', 'machine tools', 'engineering', 'industrial']
+
+DATA_SCIENCE = ['data storage', 'data science', 'computer vision', 'smart technologies', 'machine learning', 'blockchain']
 
 #--ticker data--
 
 PENNY_STOCKS = { # Share price below $6.00
-    # 'NAO': {'key_terms':  # Renamed to PSV
-    #             ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
-    #         'name': 'Nordic American Offshore'},
+    'NAT': {'key_terms':  # Renamed to PSV
+                ['Marshall Islands', 'supply vessels', 'crew boats', 'anchor handling vessels'],
+            'name': 'Nordic American Tankers'},
     'ROSE': {'key_terms':
                  ENERGY,
              'name': 'Rosehill Resources'},
@@ -45,7 +49,7 @@ PENNY_STOCKS = { # Share price below $6.00
                 ENERGY,
             'name': 'Forum Energy Technologies'},
     'OMI': {'key_terms':
-                HEALTH_CARE + ['cancer', 'immune disease', 'inflammation'],
+                BIOTECH + ['cancer', 'immune disease', 'inflammation'],
             'name': 'Owens & Minor'},
     'IDN': {'key_terms':
                 ['identity theft', 'identity fraud', 'credit card fraud', 'credit card', 'drivers license'],
@@ -69,7 +73,7 @@ PENNY_STOCKS = { # Share price below $6.00
                  ['mobile app', 'digital media', 'digital advertising', 'mobile user experience', 'sponsored app', 'mobile devices'],
              'name': 'Digital Turbine'},
     'OCUL':  {'key_terms':
-                 HEALTH_CARE + ['cataracts'],
+                  BIOTECH + ['cataracts'],
              'name': 'Ocular Therapeutix'},
     'LWAY':  {'key_terms':
                  ['kefir', 'plantiful', 'probugs', 'cups', 'skyr', 'cheese', 'probiotic'],
@@ -84,7 +88,7 @@ PENNY_STOCKS = { # Share price below $6.00
                  SEMICONDUCTOR,
              'name': 'United Microelectronics'},
     'AVXL':  {'key_terms':
-                 HEALTH_CARE,
+                 BIOTECH,
              'name': 'Anavex'},
     'VNTR':  {'key_terms':
                  ['water treatment', 'titanium dioxide', 'plastics', 'paper', 'printing inks', 'wood treatments'],
@@ -108,13 +112,61 @@ PENNY_STOCKS = { # Share price below $6.00
                  SENIOR_LIVING,
              'name': 'Capital Senior Living'},
     'BWEN': {'key_terms':
-                 ENERGY + MINING,
-             'name': 'Broadwind Energy'}
+                 ENERGY + MANUFACTURING,
+             'name': 'Broadwind Energy'},
+    'SMIT': {'key_terms':
+                 MANUFACTURING + ['automotive', 'aerospace'],
+             'name': 'Schmitt Industries'},
+    'FSM': {'key_terms':
+                 MINING,
+             'name': 'Fortuna Silver Mines'},
+    'JCS': {'key_terms':
+                 TELECOMMUNICATIONS,
+             'name': 'Communications Systems'},
+    'ALO': {'key_terms':
+                MINING,
+            'name': 'Alio Gold'},
+    'HMY': {'key_terms':
+                MINING,
+            'name': 'Harmony Gold'},
+    'OTLK': {'key_terms':
+                 BIOTECH + ['opthalmic'],
+            'name': 'Outlook Therapeutics'},
+    'XELA': {'key_terms':
+                DATA_SCIENCE + ['smart office'],
+            'name': 'Exela Technologies'},
+    'KEG': {'key_terms':
+                 ENERGY + ['fishing'],
+             'name': 'Key Energy Services'},
+    'NBRV': {'key_terms':
+                 BIOTECH,
+             'name': 'Nabriva Therapeutics'},
+    'EGO': {'key_terms':
+                 MINING,
+             'name': 'Eldorado Gold'},
+    'DRYS': {'key_terms':
+                 ENERGY + FREIGHT,
+             'name': 'DryShips'},
+    'EGY': {'key_terms':
+                 ENERGY + FREIGHT,
+             'name': 'Vaalco'},
+    'FUV': {'key_terms':
+                 ENERGY + AUTOMOTIVE,
+             'name': 'Arcimoto'},
+    'UEC': {'key_terms':
+                 ENERGY + ['Uranium', 'Atomic', 'Iran'],
+             'name': 'Uranium Energy'},
+    'IAG': {'key_terms':
+                 MINING,
+             'name': 'Iamgold'},
+    'PXLW': {'key_terms':
+                 SEMICONDUCTOR + ['HD video', 'mobile displays'],
+             'name': 'Pixelworks'}
 }
 
 SMALL_CAP = { # Below $1B mkt cap
     'ARA':{'key_terms':
-               HEALTH_CARE + ['dialysis', 'renal', 'nephrologist', 'kidney disease', 'kidney failure'],
+               BIOTECH + ['dialysis', 'renal', 'nephrologist', 'kidney disease', 'kidney failure'],
            'name': 'American Renal Associates Holdings'},
     'IMTE': {'key_terms':
                  TELECOMMUNICATIONS,
@@ -126,7 +178,7 @@ SMALL_CAP = { # Below $1B mkt cap
                  TELECOMMUNICATIONS,
              'name': 'Ooma'},
     'PRPO': {'key_terms':
-                 HEALTH_CARE + ['AI and medicine', 'deep learning', 'meadical misdiagnosis', 'cancer'],
+                 BIOTECH + ['AI and medicine', 'deep learning', 'meadical misdiagnosis', 'cancer'],
              'name': 'Precipio'},
     'AKTS': {'key_terms':
                  ['RF filter', 'acoustics', 'spkear', 'head phones', 'smart phone'],
@@ -139,7 +191,7 @@ SMALL_CAP = { # Below $1B mkt cap
                  ['satellites', 'robotics', 'Earth imagery', 'geospatial analytics', 'space systems'],
              'name': 'Maxar Technologies'},
     'ZYXI': {'key_terms':
-                 HEALTH_CARE + ['medical devices', 'electrotherapy', 'chronic pain', 'surgery', 'rehabilitation'],
+                 BIOTECH + ['medical devices', 'electrotherapy', 'chronic pain', 'surgery', 'rehabilitation'],
              'name': 'Zynex'},
     'RLGT': {'key_terms':
                  FREIGHT,
@@ -176,7 +228,7 @@ MID_CAP = { # Between $1B and $10B mkt cap
                 MINING + ['Mexican Silver Belt'],
             'name': 'MAG Silver'},
     'EIDX': {'key_terms':
-                 HEALTH_CARE + ['transthyretin', 'amyloidosis', 'rare diseases', 'heart disease'] ,
+                 BIOTECH + ['transthyretin', 'amyloidosis', 'rare diseases', 'heart disease'] ,
              'name': 'Zynex'},
     'SHEN': {'key_terms':
                  TELECOMMUNICATIONS,
@@ -185,7 +237,7 @@ MID_CAP = { # Between $1B and $10B mkt cap
                 SEMICONDUCTOR,
             'name': 'Semiconductor Manufacturing'},
     'FATE': {'key_terms':
-                 HEALTH_CARE + ['cancer', 'immune disease', 'genetic disorders'],
+                 BIOTECH + ['cancer', 'immune disease', 'genetic disorders'],
              'name': 'Fate Therapeutics'}
 }
 
@@ -208,9 +260,13 @@ SMALL_TIKCERS = merge_dicts((PENNY_STOCKS, SMALL_CAP))
 
 ALL_TICKERS = merge_dicts((PENNY_STOCKS, SMALL_CAP, MID_CAP, LARGE_CAP))
 
-NEXT_TICKERS = {}
-for tick in ALL_TICKERS:
-    if tick in ['ROSE', 'RHE', 'ASPN', 'FET', 'OMI', 'IDN', 'PIRS', 'AGI', 'WPRT', 'SESN', 'RAVE', 'CGEN']:
-        continue
-    else:
-        NEXT_TICKERS[tick] = ALL_TICKERS[tick]
+NEXT_TICKERS = {
+    'BWEN': {'key_terms':
+                 ENERGY + MANUFACTURING,
+             'name': 'Broadwind Energy'}
+}
+# for tick in ALL_TICKERS:
+#     if tick in ['ROSE', 'RHE', 'ASPN', 'FET', 'OMI', 'IDN', 'PIRS', 'AGI', 'WPRT', 'SESN', 'RAVE', 'CGEN']:
+#         continue
+#     else:
+#         NEXT_TICKERS[tick] = ALL_TICKERS[tick]

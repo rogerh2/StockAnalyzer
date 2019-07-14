@@ -18,10 +18,12 @@ from util import plot_informative_lines
 from util import ClassifierNN
 from util import progress_printer
 from util import get_current_date
+from threading import Thread
 from constants import ALL_TICKERS
 from constants import PENNY_STOCKS
 from constants import STOCK_DATA_PATH
 from constants import NEXT_TICKERS
+from constants import LARGE_CAP
 from constants import FMT
 from constants import NN_TRAINING_DATA_PATH
 from constants import MODEL_PATH
@@ -85,6 +87,7 @@ def create_between_day_change_col(df):
 #--definition of classes--
 
 class News:
+    # This class gathers and organizes news data related to a single term
 
     def __init__(self, term):
         self.term = term
@@ -97,6 +100,7 @@ class News:
         self.days = []
 
         for day, article in zip(days_list, articles['articles']):
+            # this loop organizes news articles by day
             if day in self.articles.keys():
                 self.articles[day].append(article)
             else:
@@ -114,6 +118,7 @@ class News:
         return articles
 
     def get_num_articles(self, day):
+        # this gets the number of articles stored for the specified day
         num_articles = len(self[day])
         return num_articles
 
@@ -139,6 +144,7 @@ class News:
 
 
     def get_data(self, key, day):
+        # This gets the sentiment polarity (positive or negative) and the subjectivity from the articles for that day
         if 'num_articles' in key:
             data = self.get_num_articles(day)
         elif 'polarity' in key:
@@ -149,6 +155,7 @@ class News:
         return data
 
     def create_data_frame(self):
+        # Creates a dataframe indexed by day and with columns named term + _num_articles, term + _polarity, term + _subjectivity
         df_data = {self.term + '_num_articles':np.array([]), self.term + '_polarity':np.array([]), self.term + '_subjectivity':np.array([])}
         for day in self.days:
             for key in df_data:
@@ -158,6 +165,7 @@ class News:
         self.df = pd.DataFrame(data=df_data, index=self.days)
 
     def save_news_articles(self):
+        # saves the data for each news article
         data_for_df = {'title':[], 'publishedAt':[],'url':[], 'description':[]}
         for date in self.articles.keys():
             for article in self.articles[date]:
@@ -170,7 +178,7 @@ class News:
 class KeyTerm:
 
     funcs = functions
-
+    # This class handles all relevant data for a key term
     def __init__(self, term, date_range):
         # all dates formatted as YYYY-MM-DD
         self.term = term
@@ -180,6 +188,7 @@ class KeyTerm:
         sleep(0.3)
 
     def convert_googletrend_index_to_str(self):
+        # GoogleTrend data are initiallu indexed by datetime objects
         if len(self.data['GoogleTrend'].index.values) > 0:
             current_inds = self.data['GoogleTrend'].index.values
             new_inds = [str(t)[:10] for t in current_inds]
@@ -202,6 +211,8 @@ class KeyTerm:
         return latest_key
 
     def join_data_into_dataframes(self):
+        # This combines all data stored in the self.data dict (data should be initially formatted in dataframes with
+        # dates as indices. Dates snhould be strings formatted as YYYY-MM-DD
         trend_data_exists = self.convert_googletrend_index_to_str()
         start_key = None # Just here to make pycharm not highlight start_key in yellow
         if trend_data_exists:
@@ -228,6 +239,8 @@ class KeyTerm:
 class CorporateID(KeyTerm):
 
     def __init__(self, name, date_range):
+        # Because company names are (usually) non-degenerate, they can load news data initially without worrying about
+        # double API calls
         super().__init__(name, date_range)
         self.news = News(name)
         self.news.create_data_frame()
@@ -236,6 +249,8 @@ class CorporateID(KeyTerm):
 class Ticker(CorporateID):
 
     def __init__(self, ticker):
+        # Because company tickers are non-degenerate, they can load news data initially without worrying about
+        # double API calls
         stock_data, _ = ALPHA_TS.get_daily_adjusted(symbol=ticker)
         sleep(0.3)
         date_range = stock_data.index.values[0] + ' ' + stock_data.index.values[-1]
@@ -246,6 +261,8 @@ class Ticker(CorporateID):
 class Corporation(Ticker):
 
     def __init__(self, name, ticker, key_words_list, key_words_news_dfs):
+        # This class manages all data about a particular corporation
+        # key_word_news_dfs contain news objects for each keyword (avoids dual API calls)
 
         super(Corporation, self).__init__(ticker)
         self.name = name
@@ -270,6 +287,7 @@ class Corporation(Ticker):
     def save_data(self):
         self.join_data_into_dataframes()
         self.df.to_csv(STOCK_DATA_PATH + self.df.index.values[-1] + '_' + self.ticker + '_' + self.name + '.csv')
+        print('Data for ' + self.name + ' is saved')
 
 class Stats:
 
@@ -283,6 +301,7 @@ class Stats:
         self.stock_data = stock_data.join(between_day_change_col)
 
     def create_time_dependent_arr(self, header_to_convert, t_func=inv_t, start_val=20):
+        # This creates an array without nans that factors in past data into the current term
         arr_to_convert = self.stock_data[header_to_convert].values / np.max(self.stock_data[header_to_convert].fillna(0).values)
 
         new_arr = np.array([])
@@ -304,6 +323,7 @@ class Stats:
         return new_arr
 
     def fit_time_dependent_arr_to_arr(self, t_dependent_arr_header, arr_header, t_func=inv_t, start_val=20):
+        # This creates an array with history and compares it to an array without history
         arr = self.stock_data[arr_header].values[start_val::]
         t_dependent_arr = self.create_time_dependent_arr(t_dependent_arr_header, t_func=t_func, start_val=start_val)
         no_nan_arrs = eliminate_nans_equally([arr, t_dependent_arr])
@@ -380,6 +400,26 @@ class Stats:
 
         return indicators
 
+    def create_row_from_price_data(self, num_days, excluded_col_segments=('7', '8')):
+        # TODO use this method to create training data of all historical data
+        # This turns the price data from num_days ago into a single row. excluder_headers_seg contains segments of headers that should not be included
+        cols_to_drop = []
+
+        # make a list of unwanted headers
+        for col in self.stock_data.columns:
+            col_is_excluded = any([not ex_key in col for ex_key in excluded_col_segments])
+            if col_is_excluded:
+                cols_to_drop.append(col)
+
+        # drop unwanted columns and rows
+        df = self.stock_data.drop(cols_to_drop, axis=1)
+        df = df.iloc[-num_days::]
+
+        # create single array from df values
+        arr = df.values.reshape(df.values.size)
+
+        return arr
+
     def analyze_correlations(self, corr_header):
         ticker = self.stock_data
         corr_data = ticker.corr()[corr_header]
@@ -455,7 +495,7 @@ class MultiSymbolStats:
         for key in indicators.keys():
             if ('Split' in key) or ('Dividend' in key):
                 continue
-            if ('Previous' in key):
+            if ('Previous' in key): # The data with Previous in the key is custom and already has the correlation added
                 if key in data.keys():
                     data[key] = np.append(data[key], indicators[key][0])
                     data[key + ' Correlation'] = np.append(data[key], indicators[key][1])
@@ -464,9 +504,9 @@ class MultiSymbolStats:
                     data[key + ' Correlation'] = np.array([indicators[key][1]])
                 continue
 
-            key_words.append(ticker + '-' + key)
+            key_words.append(ticker + '-' + key) # Each key word is ranked, data with Previous in the title is the same for each key word (therefore is implicit in the rankings)
             current_ind = indicators[key]
-            for ind in current_ind.keys():
+            for ind in current_ind.keys(): #
                 if not 'Correlation' in ind:
                     data[ind] = np.append(data[ind], current_ind[ind][0])
                     data[ind + ' Correlation'] = np.append(data[ind + ' Correlation'], current_ind[ind][1])
@@ -584,6 +624,7 @@ def create_and_save_data(tickers_list):
                 news_objects[term] = News(term)
                 sleep(0.3)
             if len(news_objects[term].days) > 0:
+                # TODO move this to another thread without disrupting loop
                 news_objects[term].create_data_frame()
                 news_objects[term].save_news_articles()
                 current_data['news'].append(news_objects[term].df)
@@ -592,7 +633,8 @@ def create_and_save_data(tickers_list):
             current_corp = Corporation(current_data['name'], key, current_list, current_data['news'])
         else:
             current_corp = Corporation(current_data['name'], key, current_list, None)
-        current_corp.save_data()
+        save_thread = Thread(target=current_corp.save_data)
+        save_thread.start() # Move saving to csv to a different thread
 
 def get_next_daily_change_percentage(ticker, day, next_header='daily_change'):
     corp_name = ALL_TICKERS[ticker]['name']
@@ -624,33 +666,7 @@ def get_next_daily_change_percentage(ticker, day, next_header='daily_change'):
 
     return None, None
 
-def create_training_output(df, day, next_header='daily_change'):
-    answer_array_header = 'Next Change'
-    df_data = {answer_array_header:np.array([])}
-    for ind in df.index.values:
-        ticker = ind.split('-')[0]
-        next_percent, _ = get_next_daily_change_percentage(ticker, day, next_header=next_header)
-        df_data[answer_array_header] = np.append(df_data[answer_array_header], next_percent)
 
-    ans_df = pd.DataFrame(df_data, index=df.index)
-    return ans_df
-
-def create_training_df(days, task, next_header='daily_change', tickers=ALL_TICKERS.keys()):
-    full_df = None
-    for day, i in zip(days, range(0, len(days))):
-        progress_printer(len(days), i, tsk=task)
-        current_stats = MultiSymbolStats(tickers, day)
-        current_input = current_stats.creat_indicator_dfs()
-        if current_input is None:
-            continue
-        current_output = create_training_output(current_input, day, next_header=next_header)
-        current_df = current_input.join(current_output)#.reset_index(drop=True)
-        if full_df is None:
-            full_df = current_df
-        else:
-            full_df = pd.concat((full_df, current_df))#, ignore_index=True)
-
-    return full_df
 
 def plot_pos_neg_groups(x_statement, y_statement, df, cutoff_percentage=0.0, ans_header='Next Change'):
     x = 1
@@ -700,7 +716,7 @@ def normalize_rows(df, col_list, norm_list):
 
     return df
 
-def save_pred_data_as_csv(df, folder_path, xlsx_name):
+def save_prediction_data_as_csv(df, folder_path, xlsx_name):
     # Create the Excel file
     if not os.path.exists(folder_path):
         os.mkdir(folder_path)
@@ -741,13 +757,44 @@ def save_pred_data_as_csv(df, folder_path, xlsx_name):
                                   })
     writer.save()
 
+# -- Functions for creating training data --
+
+def create_training_output(df, day, next_header='daily_change'):
+    answer_array_header = 'Next Change'
+    df_data = {answer_array_header:np.array([])}
+    for ind in df.index.values:
+        ticker = ind.split('-')[0]
+        next_percent, _ = get_next_daily_change_percentage(ticker, day, next_header=next_header)
+        df_data[answer_array_header] = np.append(df_data[answer_array_header], next_percent)
+
+    ans_df = pd.DataFrame(df_data, index=df.index)
+    return ans_df
+
+def create_training_df_using_indicators(days, task, next_header='daily_change', tickers=ALL_TICKERS.keys()):
+    full_df = None
+    for day, i in zip(days, range(0, len(days))):
+        progress_printer(len(days), i, tsk=task)
+        current_stats = MultiSymbolStats(tickers, day)
+        current_input = current_stats.creat_indicator_dfs()
+        if current_input is None:
+            continue
+        current_output = create_training_output(current_input, day, next_header=next_header)
+        current_df = current_input.join(current_output)#.reset_index(drop=True)
+        if full_df is None:
+            full_df = current_df
+        else:
+            full_df = pd.concat((full_df, current_df))#, ignore_index=True)
+
+    return full_df
+
+
 if __name__ == "__main__":
     valid_tasks = ['get_data', 'score_data', 'create_training_data', 'predict', 'other']
     task = input('available tasks: ' + '"' + '", "'.join(valid_tasks) + '"\nwhat task would you like to perform? ')
     if task not in valid_tasks:
         raise ValueError(task + ' is not a valid entry')
 
-    if task == 'get_data':
+    if task in ['get_data', 'create_training_data']:
         day = None
     else:
         day = input('\nPlease enter the date in YYYY-MM-DD format. For the current date just press enter.\nWhich date would you like to analyze? ')
@@ -769,16 +816,16 @@ if __name__ == "__main__":
 
     elif task == 'create_training_data':
         output_header = 'daily_change'
-        train_df = create_training_df(['2019-06-04', '2019-06-08', '2019-05-01', '2019-04-25', '2019-05-21', '2019-04-29', '2019-05-23', '2019-06-03', '2019-05-09', '2019-04-30', '2019-05-15', '2019-05-13', '2019-05-27', '2019-04-24', '2019-05-29', '2019-05-07', '2019-06-02', '2019-06-07', '2019-05-14', '2019-06-05', '2019-05-08', '2019-04-27', '2019-05-03', '2019-05-04', '2019-06-10', '2019-05-11', '2019-06-14', '2019-06-13', '2019-05-22', '2019-04-28', '2019-06-11', '2019-06-01', '2019-06-12', '2019-05-28', '2019-05-30'], 'creating training data', next_header=output_header, tickers=PENNY_STOCKS.keys())
-        val_df = create_training_df(['2019-05-19', '2019-06-06', '2019-04-26', '2019-05-10', '2019-05-20', '2019-05-12', '2019-06-09', '2019-05-16', '2019-05-18'], 'creating validation data', next_header='between_day_change', tickers=PENNY_STOCKS.keys())
-        test_df = create_training_df(['2019-05-31', '2019-05-06', '2019-05-05', '2019-05-02', '2019-04-23'], 'creating test data', next_header=output_header, tickers=PENNY_STOCKS.keys())
+        train_df = create_training_df_using_indicators(['2019-06-20', '2019-07-08', '2019-05-15', '2019-05-11', '2019-05-19', '2019-06-29', '2019-06-02', '2019-05-05', '2019-06-08', '2019-05-21', '2019-05-07', '2019-06-04', '2019-05-27', '2019-04-23', '2019-06-16', '2019-06-14', '2019-07-06', '2019-07-04', '2019-07-05', '2019-05-02', '2019-06-18', '2019-05-03', '2019-05-20', '2019-04-29', '2019-05-04', '2019-05-13', '2019-05-28', '2019-06-07', '2019-06-11', '2019-06-09', '2019-06-19', '2019-07-07', '2019-05-23', '2019-04-27', '2019-06-03', '2019-05-12', '2019-05-06', '2019-05-18', '2019-04-30', '2019-06-25', '2019-05-29', '2019-04-28', '2019-06-01', '2019-06-21', '2019-06-23', '2019-05-09', '2019-06-27', '2019-05-30', '2019-04-26', '2019-06-17', '2019-06-10', '2019-06-06', '2019-05-01'], 'creating training data', next_header=output_header, tickers=PENNY_STOCKS.keys())
+        val_df = create_training_df_using_indicators(['2019-07-03', '2019-05-22', '2019-06-30', '2019-07-02', '2019-06-13', '2019-06-12', '2019-06-28', '2019-05-10', '2019-05-31', '2019-07-01', '2019-06-05', '2019-06-26', '2019-05-16'], 'creating validation data', next_header='between_day_change', tickers=PENNY_STOCKS.keys())
+        test_df = create_training_df_using_indicators(['2019-05-14', '2019-04-25', '2019-04-24', '2019-06-15', '2019-06-24', '2019-07-09', '2019-05-08'], 'creating test data', next_header=output_header, tickers=PENNY_STOCKS.keys())
         train_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_training_data.csv')
         val_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_val_data.csv')
         test_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_test_data.csv')
 
     elif task == 'predict':
         # create dataset for predicting
-        dataset = create_training_df([day], 'creating prediction data', next_header='daily_change', tickers=PENNY_STOCKS.keys())
+        dataset = create_training_df_using_indicators([day], 'creating prediction data', next_header='daily_change', tickers=PENNY_STOCKS.keys())
         dataset = normalize_rows(dataset, ['Previous Movement'], [100])
         X = dataset.values[:, 0:INPUT_SIZE]
         # predict
@@ -790,7 +837,7 @@ if __name__ == "__main__":
         pred_df = pd.DataFrame(data=prediction, columns=['negative', 'weak positive', 'strong positive'],
                                index=dataset.index.values)
         pred_df['total positive'] = pred_df['weak positive'].values + pred_df['strong positive'].values
-        save_pred_data_as_csv(pred_df,DATA_PATH + day.replace('-', '') + '/', 'Predictions_' + day.replace('-', '') + '_' + model_name[0:-3])
+        save_prediction_data_as_csv(pred_df, DATA_PATH + day.replace('-', '') + '/', 'Predictions_' + day.replace('-', '') + '_' + model_name[0:-3])
 
     elif task == 'other':
         stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
