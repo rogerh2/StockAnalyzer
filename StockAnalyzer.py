@@ -400,23 +400,35 @@ class Stats:
 
         return indicators
 
-    def create_row_from_price_data(self, num_days, excluded_col_segments=('7', '8')):
-        # TODO use this method to create training data of all historical data
+    def create_row_from_price_data(self, target_num_trading_days, cols_to_keep=('1', '2', '3', '4', '5', '6')):
         # This turns the price data from num_days ago into a single row. excluder_headers_seg contains segments of headers that should not be included
         cols_to_drop = []
 
-        # make a list of unwanted headers
+        # make a list of unwanted headers and drop unwanted columns
         for col in self.stock_data.columns:
-            col_is_excluded = any([not ex_key in col for ex_key in excluded_col_segments])
+            col_is_excluded = all([not ex_key in col for ex_key in cols_to_keep])
             if col_is_excluded:
                 cols_to_drop.append(col)
-
-        # drop unwanted columns and rows
         df = self.stock_data.drop(cols_to_drop, axis=1)
-        df = df.iloc[-num_days::]
+
+        # drop unwanted rows so that the correct number og trading days (days without nan open values) are stored
+        nan_filter_arr = df['1. open'].values[-target_num_trading_days::]
+        num_trading_days = len(nan_filter_arr[~np.isnan(nan_filter_arr)])
+        day_offset = target_num_trading_days
+        while num_trading_days != target_num_trading_days:
+            if num_trading_days < target_num_trading_days: # This if statement allows the correct offset to be found more quickly than brute force counting
+                day_offset += int(0.27 * (target_num_trading_days - num_trading_days) + 1)
+            else:
+                day_offset -= 1
+            nan_filter_arr = df['1. open'].values[-day_offset::]
+            num_trading_days = len(nan_filter_arr[~np.isnan(nan_filter_arr)])
+
+        df = df.iloc[-day_offset::]
 
         # create single array from df values
-        arr = df.values.reshape(df.values.size)
+        arr = df.values
+        arr = arr[~np.isnan(arr)]
+        arr = arr.reshape(1, len(arr))
 
         return arr
 
@@ -442,6 +454,7 @@ class MultiSymbolStats:
 
     def __init__(self, tickers_list, date, folder_path=STOCK_DATA_PATH):
         self.stats = {}
+        self.date = date
         for ticker in tickers_list:
             fname = folder_path + date + '_' + ticker + '_' + ALL_TICKERS[ticker]['name'] + '.csv'
             file_does_not_exist = not os.path.isfile(fname)
@@ -516,10 +529,15 @@ class MultiSymbolStats:
         df = pd.DataFrame(data, index=key_words)
         return df
 
-    def creat_indicator_dfs(self):
+    def create_price_row_for_symbol(self, ticker, num_days=30, excluded_col_segments=('1', '2', '3', '4', '5', '6')):
+        price_row = self.stats[ticker].create_row_from_price_data(num_days, excluded_col_segments)
+        df = pd.DataFrame(data=price_row, index=[ticker + '-' + self.date])
+        return df
+
+    def create_dfs(self, df_func):
         df = None
         for ticker in self.stats.keys():
-            current_df = self.create_indicator_rows_for_symbol(ticker)
+            current_df = df_func(ticker)
             if current_df is None:
                 continue
             if df is None:
@@ -527,6 +545,14 @@ class MultiSymbolStats:
             else:
                 df = pd.concat((df, current_df))
 
+        return df
+
+    def creat_indicator_dfs(self):
+        df = self.create_dfs(self.create_indicator_rows_for_symbol)
+        return df
+
+    def create_price_data_dfs(self):
+        df = self.create_dfs(self.create_price_row_for_symbol)
         return df
 
     def score_one_arr(self, raw_arr, corr_arr):
@@ -770,12 +796,17 @@ def create_training_output(df, day, next_header='daily_change'):
     ans_df = pd.DataFrame(df_data, index=df.index)
     return ans_df
 
-def create_training_df_using_indicators(days, task, next_header='daily_change', tickers=ALL_TICKERS.keys()):
+def create_training_df_using_indicators(days, task, input_data_type='indicators', next_header='daily_change', tickers=ALL_TICKERS.keys()):
     full_df = None
     for day, i in zip(days, range(0, len(days))):
         progress_printer(len(days), i, tsk=task)
         current_stats = MultiSymbolStats(tickers, day)
-        current_input = current_stats.creat_indicator_dfs()
+
+        if input_data_type == 'indicators':
+            current_input = current_stats.creat_indicator_dfs()
+        else:
+            current_input = current_stats.create_price_data_dfs()
+
         if current_input is None:
             continue
         current_output = create_training_output(current_input, day, next_header=next_header)
@@ -816,12 +847,13 @@ if __name__ == "__main__":
 
     elif task == 'create_training_data':
         output_header = 'daily_change'
-        train_df = create_training_df_using_indicators(['2019-06-20', '2019-07-08', '2019-05-15', '2019-05-11', '2019-05-19', '2019-06-29', '2019-06-02', '2019-05-05', '2019-06-08', '2019-05-21', '2019-05-07', '2019-06-04', '2019-05-27', '2019-04-23', '2019-06-16', '2019-06-14', '2019-07-06', '2019-07-04', '2019-07-05', '2019-05-02', '2019-06-18', '2019-05-03', '2019-05-20', '2019-04-29', '2019-05-04', '2019-05-13', '2019-05-28', '2019-06-07', '2019-06-11', '2019-06-09', '2019-06-19', '2019-07-07', '2019-05-23', '2019-04-27', '2019-06-03', '2019-05-12', '2019-05-06', '2019-05-18', '2019-04-30', '2019-06-25', '2019-05-29', '2019-04-28', '2019-06-01', '2019-06-21', '2019-06-23', '2019-05-09', '2019-06-27', '2019-05-30', '2019-04-26', '2019-06-17', '2019-06-10', '2019-06-06', '2019-05-01'], 'creating training data', next_header=output_header, tickers=PENNY_STOCKS.keys())
-        val_df = create_training_df_using_indicators(['2019-07-03', '2019-05-22', '2019-06-30', '2019-07-02', '2019-06-13', '2019-06-12', '2019-06-28', '2019-05-10', '2019-05-31', '2019-07-01', '2019-06-05', '2019-06-26', '2019-05-16'], 'creating validation data', next_header='between_day_change', tickers=PENNY_STOCKS.keys())
-        test_df = create_training_df_using_indicators(['2019-05-14', '2019-04-25', '2019-04-24', '2019-06-15', '2019-06-24', '2019-07-09', '2019-05-08'], 'creating test data', next_header=output_header, tickers=PENNY_STOCKS.keys())
-        train_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_training_data.csv')
-        val_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_val_data.csv')
-        test_df.to_csv(NN_TRAINING_DATA_PATH + output_header + '_test_data.csv')
+        input_type = 'price'
+        train_df = create_training_df_using_indicators(['2019-06-20', '2019-07-08', '2019-05-15', '2019-05-11', '2019-05-19', '2019-06-29', '2019-06-02', '2019-05-05', '2019-06-08', '2019-05-21', '2019-05-07', '2019-06-04', '2019-05-27', '2019-04-23', '2019-06-16', '2019-06-14', '2019-07-06', '2019-07-04', '2019-07-05', '2019-05-02', '2019-06-18', '2019-05-03', '2019-05-20', '2019-04-29', '2019-05-04', '2019-05-13', '2019-05-28', '2019-06-07', '2019-06-11', '2019-06-09', '2019-06-19', '2019-07-07', '2019-05-23', '2019-04-27', '2019-06-03', '2019-05-12', '2019-05-06', '2019-05-18', '2019-04-30', '2019-06-25', '2019-05-29', '2019-04-28', '2019-06-01', '2019-06-21', '2019-06-23', '2019-05-09', '2019-06-27', '2019-05-30', '2019-04-26', '2019-06-17', '2019-06-10', '2019-06-06', '2019-05-01'], 'creating training data', input_data_type=input_type, next_header=output_header, tickers=PENNY_STOCKS.keys())
+        val_df = create_training_df_using_indicators(['2019-07-03', '2019-05-22', '2019-06-30', '2019-07-02', '2019-06-13', '2019-06-12', '2019-06-28', '2019-05-10', '2019-05-31', '2019-07-01', '2019-06-05', '2019-06-26', '2019-05-16'], 'creating validation data', input_data_type=input_type, next_header='between_day_change', tickers=PENNY_STOCKS.keys())
+        test_df = create_training_df_using_indicators(['2019-05-14', '2019-04-25', '2019-04-24', '2019-06-15', '2019-06-24', '2019-07-09', '2019-05-08'], 'creating test data', input_data_type=input_type, next_header=output_header, tickers=PENNY_STOCKS.keys())
+        train_df.to_csv(NN_TRAINING_DATA_PATH + output_header + input_type + '_training_data.csv')
+        val_df.to_csv(NN_TRAINING_DATA_PATH + output_header + input_type +  '_val_data.csv')
+        test_df.to_csv(NN_TRAINING_DATA_PATH + output_header + input_type +  '_test_data.csv')
 
     elif task == 'predict':
         # create dataset for predicting
@@ -840,9 +872,6 @@ if __name__ == "__main__":
         save_prediction_data_as_csv(pred_df, DATA_PATH + day.replace('-', '') + '/', 'Predictions_' + day.replace('-', '') + '_' + model_name[0:-3])
 
     elif task == 'other':
-        stat = Stats('/Users/rjh2nd/PycharmProjects/StockAnalyzer/Stock Data/2019-04-29_ASPN_Aspen Aerogels.csv')
-        _ = stat.analyze_correlations('1. open')
-        stat.plot_time_dependent_arr_vs_arr('1. open', '1. open', t_func=inv_t)
-        change, current_day_str = get_next_daily_change_percentage('AMD', '2019-04-30')
-        check_score_vs_mvmt('2019-05-13', '2019-05-14')
-        plt.show()
+        stat = MultiSymbolStats(['ASPN', 'PIRS', 'EGO'], '2019-07-09')
+        a = stat.create_price_data_dfs()
+        pass
