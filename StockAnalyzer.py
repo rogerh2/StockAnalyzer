@@ -412,21 +412,24 @@ class Stats:
         df = self.stock_data.drop(cols_to_drop, axis=1)
 
         # drop unwanted rows so that the correct number og trading days (days without nan open values) are stored
-        nan_filter_arr = df['1. open'].values[-target_num_trading_days::]
-        num_trading_days = len(nan_filter_arr[~np.isnan(nan_filter_arr)])
-        day_offset = target_num_trading_days
-        while num_trading_days != target_num_trading_days:
-            if num_trading_days < target_num_trading_days: # This if statement allows the correct offset to be found more quickly than brute force counting
-                day_offset += int(0.27 * (target_num_trading_days - num_trading_days) + 1)
-            else:
-                day_offset -= 1
-            nan_filter_arr = df['1. open'].values[-day_offset::]
-            num_trading_days = len(nan_filter_arr[~np.isnan(nan_filter_arr)])
+        # nan_filter_arr = df['1. open'].values[-target_num_trading_days::]
+        # num_trading_days = len(nan_filter_arr[~np.isnan(nan_filter_arr)])
+        # day_offset = target_num_trading_days
+        # while num_trading_days != target_num_trading_days:
+        #     if num_trading_days < target_num_trading_days: # This if statement allows the correct offset to be found more quickly than brute force counting
+        #         day_offset += int(0.27 * (target_num_trading_days - num_trading_days) + 1)
+        #     else:
+        #         day_offset -= 1
+        #     nan_filter_arr = df['1. open'].values[-day_offset::]
+        #     num_trading_days = len(nan_filter_arr[~np.isnan(nan_filter_arr)])
 
-        df = df.iloc[-day_offset::]
+        nan_mask = ~np.isnan(df['1. open'].values)
+        df = df.iloc[nan_mask]
+        truncated_df = df.iloc[-target_num_trading_days::]
+        prior_df = df.iloc[-(target_num_trading_days+1):-1]
 
         # create single array from df values
-        arr = df.values
+        arr = (truncated_df.values - prior_df.values) / prior_df.values
         arr = arr[~np.isnan(arr)]
         arr = arr.reshape(1, len(arr))
 
@@ -529,8 +532,8 @@ class MultiSymbolStats:
         df = pd.DataFrame(data, index=key_words)
         return df
 
-    def create_price_row_for_symbol(self, ticker, num_days=30, excluded_col_segments=('1', '2', '3', '4', '5', '6')):
-        price_row = self.stats[ticker].create_row_from_price_data(num_days, excluded_col_segments)
+    def create_price_row_for_symbol(self, ticker, num_days=30, included_col_segments=('1', '2', '3', '4', '5')):
+        price_row = self.stats[ticker].create_row_from_price_data(num_days, included_col_segments)
         df = pd.DataFrame(data=price_row, index=[ticker + '-' + self.date])
         return df
 

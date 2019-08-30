@@ -13,7 +13,7 @@ from sklearn.pipeline import Pipeline
 from util import BaseNN
 from util import balance_classes
 from util import get_current_date
-from sklearn.utils import resample
+from sklearn.preprocessing import StandardScaler
 from constants import NN_TRAINING_DATA_PATH
 from constants import MODEL_PATH
 
@@ -25,7 +25,8 @@ from constants import MODEL_PATH
 # # convert integers to dummy variables (i.e. one hot encoded)
 # dummy_y = shuffle(np_utils.to_categorical(encoded_Y), random_state=1)
 
-INPUT_SIZE=17
+INPUT_SIZE=150
+HI_CUTOFF = 3
 
 def create_data_for_train_test(data):
     dataset = data.values
@@ -34,18 +35,20 @@ def create_data_for_train_test(data):
     X = X[shuffled_nan_mask, :]
     Y = shuffle(dataset[:, (dataset.shape[1]-1)], random_state=2)[shuffled_nan_mask]
     neg_y_mask = Y < 0
-    low_y_mask = (Y > 0) * (Y < 5)
-    hi_y_mask = (Y > 5)
+    low_y_mask = (Y > 0) * (Y < HI_CUTOFF)
+    hi_y_mask = (Y > HI_CUTOFF)
 
     Y_unbalanced = np.hstack((neg_y_mask.reshape(len(Y), 1), low_y_mask.reshape(len(Y), 1), hi_y_mask.reshape(len(Y), 1)))
     hi_balance_mask = hi_y_mask
     X_unbalanced = X
 
-    X_hi_balanced = balance_classes(X_unbalanced, hi_balance_mask, np.sum(neg_y_mask))
-    Y_hi_balanced = balance_classes(Y_unbalanced, hi_balance_mask, np.sum(neg_y_mask))
+    balance_size = int(np.sum(neg_y_mask))
+
+    X_hi_balanced = balance_classes(X_unbalanced, hi_balance_mask, balance_size)
+    Y_hi_balanced = balance_classes(Y_unbalanced, hi_balance_mask, balance_size)
     low_balance_mask = Y_hi_balanced[:, 1]
-    X_fit = balance_classes(X_hi_balanced, low_balance_mask, np.sum(neg_y_mask))
-    Y_fit = balance_classes(Y_hi_balanced, low_balance_mask, np.sum(neg_y_mask))
+    X_fit = balance_classes(X_hi_balanced, low_balance_mask, balance_size)
+    Y_fit = balance_classes(Y_hi_balanced, low_balance_mask, balance_size)
 
     return X_fit, Y_fit
 
@@ -76,24 +79,47 @@ def save_pred_data_as_csv(df, xlsx_name):
 
     sheet_len = str(df.shape[0] + 1)
 
-    # Wroksheet conditions
+    # --Wroksheet conditions--
+    # Use data bars to represent the rating for each class
     worksheet.conditional_format('B2:D' + sheet_len, {'type': 'data_bar'})
+
+    # Use a 3 color scale to show percentage for the positive (raising price classes)
     worksheet.conditional_format('E2:E' + sheet_len, {'type': '3_color_scale'})
+
+    # Highlight rows to show which prediction is most likely
     worksheet.conditional_format('A2:A' + sheet_len,
                                  {'type': 'formula',
-                                  'criteria': '=$B2>$E2',
+                                  'criteria': '=AND($B2>$C2, $B2>$D2)',
                                   'format': red_format
                                   })
     worksheet.conditional_format('A2:A' + sheet_len,
                                  {'type': 'formula',
-                                  'criteria': '=AND($E2>$B2, $C2>$D2)',
+                                  'criteria': '=AND($C2>$B2, $C2>$D2)',
                                   'format': yellow_format
                                   })
     worksheet.conditional_format('A2:A' + sheet_len,
                                  {'type': 'formula',
-                                  'criteria': '=AND($E2>$B2, $C2<$D2)',
+                                  'criteria': '=AND($D2>$B2, $D2>$C2)',
                                   'format': green_format
                                   })
+
+    # Highlight answers
+    worksheet.conditional_format('F2:F' + sheet_len,
+                                 {'type': 'cell',
+                                  'criteria': '<',
+                                  'value': 0,
+                                  'format': red_format})
+    worksheet.conditional_format('F2:F' + sheet_len,
+                                 {'type': 'formula',
+                                  'criteria': '=AND($F2>0, 3>$F2)',
+                                  'format': yellow_format
+                                  })
+    worksheet.conditional_format('F2:F' + sheet_len,
+                                 {'type': 'cell',
+                                  'criteria': '>=',
+                                  'value': HI_CUTOFF,
+                                  'format': green_format})
+
     writer.save()
 
 
@@ -103,7 +129,7 @@ class ClassifierNN(BaseNN):
         # N is the number
         super(ClassifierNN, self).__init__(model_type, model_path, seed)
         if model_path is None:
-            self.model.add(Dense(30, input_dim=INPUT_SIZE, activation='relu'))
+            self.model.add(Dense(200, input_dim=INPUT_SIZE, activation='relu'))
             self.model.add(LeakyReLU())
             self.model.add(Dense(number_of_classes, activation='softmax'))
             self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -115,16 +141,17 @@ class ClassifierNN(BaseNN):
 if __name__ == "__main__":
     train = True
     #TODO move to StockAnalyzer
-    prefix = 'daily_change'
+    #TODO check method for the creation of training data to remove dropped columns (due to subtracting nans)
+    prefix = 'daily_changeprice'
     if train:
-        train_dataset = pd.read_csv(NN_TRAINING_DATA_PATH + prefix + '_training_data.csv', index_col=0).drop_duplicates(subset ="Previous Movement", keep ='first', inplace = False)
-        train_dataset = normalize_rows(train_dataset, ['Previous Movement'], [100])
+        train_dataset = pd.read_csv(NN_TRAINING_DATA_PATH + prefix + '_training_data.csv', index_col=0)#.drop_duplicates(subset ="Previous Movement", keep ='first', inplace = False)
+        # train_dataset = normalize_rows(train_dataset, ['Previous Movement'], [100])
 
-        val_dataset = pd.read_csv(NN_TRAINING_DATA_PATH + prefix + '_val_data.csv', index_col=0).drop_duplicates(subset ="Previous Movement", keep ='first', inplace = False)
-        val_dataset = normalize_rows(val_dataset, ['Previous Movement'], [100])
+        val_dataset = pd.read_csv(NN_TRAINING_DATA_PATH + prefix + '_val_data.csv', index_col=0)#.drop_duplicates(subset ="Previous Movement", keep ='first', inplace = False)
+        # val_dataset = normalize_rows(val_dataset, ['Previous Movement'], [100])
 
         test_dataset = pd.read_csv(NN_TRAINING_DATA_PATH + prefix + '_test_data.csv', index_col=0)
-        test_dataset = normalize_rows(test_dataset, ['Previous Movement'], [100])
+        # test_dataset = normalize_rows(test_dataset, ['Previous Movement'], [100])
 
         X_train, Y_train = create_data_for_train_test(train_dataset)
         X_val, Y_val = create_data_for_train_test(val_dataset)
@@ -134,10 +161,18 @@ if __name__ == "__main__":
         X_fit = np.vstack((X_train, X_val))
         Y_fit = np.vstack((Y_train, Y_val))
 
+        scalar = StandardScaler()
+        scalar = scalar.fit(X_fit)
+        X_fit = scalar.transform(X_fit)
+
+        scalar = StandardScaler()
+        scalar = scalar.fit(X_test)
+        X_test = scalar.transform(X_test)
+
         train_val_split = X_val.shape[0] / X_fit.shape[0]
 
         class_nn = ClassifierNN()
-        class_nn.train_model(X_fit, Y_fit, 30, batch_size=5, training_patience=200, val_split=train_val_split, file_name=MODEL_PATH + 'stock_daily_change_predictor_' + get_current_date() + '.h5')
+        class_nn.train_model(X_fit, Y_fit, 100, batch_size=24, training_patience=1000, val_split=train_val_split, file_name=MODEL_PATH + 'stock_daily_change_predictor_' + get_current_date() + '.h5')
         test_data = class_nn.test_model(X_test, Y_test, show_plots=False)
         df1 = pd.DataFrame(test_data['Predicted'], index=test_dataset.index.values)
         pos_comb = df1[1].values + df1[2].values
